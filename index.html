@@ -8,291 +8,729 @@
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 <meta name="apple-mobile-web-app-title" content="Maison">
 <meta name="theme-color" content="#101418">
+<meta name="robots" content="noindex">
 <title>Tableau Maison</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&family=Space+Grotesk:wght@400;500;700&display=swap">
 <style>
-/* Écran mural paysage : grille 3 colonnes (temps / carburant / tâches) + bandeau agenda en bas */
+/* Écran mural paysage : onglets en bas, chaque onglet est une grille de panneaux */
 :root{
-  --bg:#101418; --panel:#181e24; --line:#26303a; --fg:#e8edf2; --muted:#8a97a5;
-  --accent:#f2b544; --good:#5cc48a; --bad:#e8766a;
+  --bg:#101418; --panel:#181e24; --panel2:#1f262e; --line:#2a343e; --fg:#e8edf2; --muted:#8d9aa8;
+  --accent:#f2b544; --good:#5cc48a; --warn:#e9a23b; --bad:#e8766a;
+  --p1:#6fb3ff; --p2:#c48bff; --p3:#ff8fb1;
   --display:"Space Grotesk",system-ui,-apple-system,sans-serif;
   --body:"Inter",system-ui,-apple-system,sans-serif;
   color-scheme:dark;
 }
 *{box-sizing:border-box}
 html,body{height:100%;margin:0}
-body{background:var(--bg);color:var(--fg);font-family:var(--body);font-size:16px;
-  padding:max(14px,env(safe-area-inset-top)) max(16px,env(safe-area-inset-right)) max(14px,env(safe-area-inset-bottom)) max(16px,env(safe-area-inset-left));
+body{background:var(--bg);color:var(--fg);font-family:var(--body);font-size:16px;display:flex;flex-direction:column;
+  padding:max(12px,env(safe-area-inset-top)) max(16px,env(safe-area-inset-right)) 0 max(16px,env(safe-area-inset-left));
   -webkit-user-select:none;user-select:none;-webkit-tap-highlight-color:transparent;overflow:hidden}
-.grid{height:100%;display:grid;gap:14px;
-  grid-template-columns:1.25fr 1fr 1fr;grid-template-rows:auto 1fr;
-  grid-template-areas:"time fuel todo" "cal cal todo"}
-.panel{background:var(--panel);border:1px solid var(--line);border-radius:14px;padding:18px 20px;min-width:0;min-height:0;display:flex;flex-direction:column;gap:12px}
+button{cursor:pointer;font-family:var(--body)}
+button:focus-visible,input:focus-visible,select:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+input,select,textarea{background:var(--bg);border:1px solid var(--line);border-radius:10px;color:var(--fg);padding:11px 12px;font:16px var(--body);-webkit-user-select:text;user-select:text;min-width:0}
+textarea{width:100%;resize:vertical;min-height:64px;font-size:13px}
+.view{flex:1;min-height:0;overflow:auto;-webkit-overflow-scrolling:touch;padding-bottom:12px}
+.view[hidden]{display:none}
+.grid{display:grid;gap:14px;min-height:100%}
+.panel{background:var(--panel);border:1px solid var(--line);border-radius:14px;padding:16px 18px;min-width:0;min-height:0;display:flex;flex-direction:column;gap:12px}
 .label{font-size:12px;letter-spacing:.12em;text-transform:uppercase;color:var(--muted);display:flex;justify-content:space-between;align-items:center;gap:8px}
 .label small{letter-spacing:0;text-transform:none;font-size:12px}
-h1,.num{font-family:var(--display);font-variant-numeric:tabular-nums}
-/* Heure + météo */
-#time{grid-area:time}
-.clock{font-family:var(--display);font-size:clamp(56px,9vw,104px);font-weight:500;line-height:.95;letter-spacing:-.02em;font-variant-numeric:tabular-nums}
-.clock .sec{font-size:.35em;color:var(--muted);margin-left:6px}
-.date{font-size:20px;color:var(--muted);text-transform:capitalize}
-.wx-now{display:flex;align-items:center;gap:14px;margin-top:4px}
-.wx-ico{font-size:44px;line-height:1}
-.wx-temp{font-family:var(--display);font-size:44px;font-weight:500}
-.wx-desc{color:var(--muted);font-size:15px}
-.wx-days{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;border-top:1px solid var(--line);padding-top:12px}
-.wx-day{display:flex;flex-direction:column;align-items:center;gap:2px;font-size:14px}
-.wx-day b{font-weight:500;color:var(--muted);text-transform:capitalize}
-.wx-day span:first-of-type{font-size:24px}
-.wx-day .mm{font-variant-numeric:tabular-nums}
-.wx-day .mm i{font-style:normal;color:var(--muted)}
-/* Carburant */
-#fuel{grid-area:fuel}
-.fuel-tabs{display:flex;gap:6px;flex-wrap:wrap}
-.chip{border:1px solid var(--line);background:transparent;color:var(--muted);border-radius:999px;padding:6px 12px;font:500 14px var(--body)}
+.num{font-family:var(--display);font-variant-numeric:tabular-nums}
+.muted{color:var(--muted)}
+.small{font-size:13px}
+.row{display:flex;gap:8px;align-items:center;flex-wrap:wrap}
+.btn{background:var(--accent);color:#1a1405;border:0;border-radius:10px;padding:11px 16px;font-weight:600;font-size:15px}
+.btn.ghost{background:transparent;border:1px solid var(--line);color:var(--fg);font-weight:500}
+.btn.sm{padding:7px 11px;font-size:13px}
+.chip{border:1px solid var(--line);background:transparent;color:var(--muted);border-radius:999px;padding:6px 12px;font-size:14px;font-weight:500}
 .chip[aria-pressed="true"]{background:var(--accent);border-color:var(--accent);color:#1a1405}
-.stations{list-style:none;margin:0;padding:0;display:flex;flex-direction:column;overflow:auto}
-.stations li{display:grid;grid-template-columns:1fr auto;gap:2px 12px;padding:9px 0;border-bottom:1px solid var(--line)}
-.stations li:last-child{border-bottom:0}
-.st-name{font-weight:500;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
-.st-sub{font-size:13px;color:var(--muted);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
-.st-price{grid-row:span 2;align-self:center;font-family:var(--display);font-size:24px;font-weight:500;font-variant-numeric:tabular-nums}
-.st-price small{font-size:13px;color:var(--muted);font-family:var(--body)}
-.stations li:first-child .st-price{color:var(--good)}
-/* Tâches */
-#todo{grid-area:todo}
-.add{display:flex;gap:8px}
-.add input{flex:1;min-width:0;background:var(--bg);border:1px solid var(--line);border-radius:10px;color:var(--fg);padding:12px;font:16px var(--body);-webkit-user-select:text;user-select:text}
-.btn{background:var(--accent);color:#1a1405;border:0;border-radius:10px;padding:0 16px;font:600 16px var(--body)}
-.btn.ghost{background:transparent;border:1px solid var(--line);color:var(--fg)}
-.todos{list-style:none;margin:0;padding:0;overflow:auto;flex:1}
-.todos li{display:flex;align-items:center;gap:12px;padding:11px 2px;border-bottom:1px solid var(--line);font-size:17px}
-.todos li.done span{color:var(--muted);text-decoration:line-through}
-.box{flex:none;width:26px;height:26px;border-radius:8px;border:2px solid var(--muted);background:transparent;display:grid;place-items:center;color:#1a1405;font-weight:700}
-.todos li.done .box{background:var(--good);border-color:var(--good)}
-.todos li span{flex:1;min-width:0;overflow-wrap:anywhere}
-.del{background:none;border:0;color:var(--muted);font-size:22px;padding:0 6px}
-.empty{color:var(--muted);font-size:15px;padding:8px 0}
+.chip.add{color:var(--fg)}
+.list{list-style:none;margin:0;padding:0;overflow:auto}
+.list li{display:flex;align-items:center;gap:10px;padding:10px 2px;border-bottom:1px solid var(--line)}
+.list li:last-child{border-bottom:0}
+.grow{flex:1;min-width:0}
+.ell{white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.x{background:none;border:0;color:var(--muted);font-size:22px;padding:0 6px;line-height:1}
+.empty{color:var(--muted);font-size:14px;padding:6px 0;line-height:1.5}
+.bar{height:10px;border-radius:6px;background:var(--panel2);overflow:hidden;position:relative}
+.bar i{position:absolute;inset:0 auto 0 0;border-radius:6px;background:var(--good)}
+.bar.over i{background:var(--bad)}
+.dot{width:10px;height:10px;border-radius:50%;flex:none}
+
+/* Onglets */
+nav.tabs{display:flex;gap:4px;justify-content:center;border-top:1px solid var(--line);margin:0 calc(-1*max(16px,env(safe-area-inset-right))) 0 calc(-1*max(16px,env(safe-area-inset-left)));
+  padding:6px max(16px,env(safe-area-inset-right)) max(6px,env(safe-area-inset-bottom)) max(16px,env(safe-area-inset-left));background:var(--panel)}
+nav.tabs button{flex:1;max-width:150px;background:none;border:0;color:var(--muted);padding:8px 4px;border-radius:10px;display:flex;flex-direction:column;align-items:center;gap:2px;font-size:12px;font-weight:500}
+nav.tabs button b{font-size:22px;line-height:1;font-weight:400}
+nav.tabs button[aria-selected="true"]{color:var(--accent);background:var(--panel2)}
+nav.tabs .gear{flex:0 0 56px}
+
+/* Accueil */
+#v-home .grid{grid-template-columns:1.15fr 1.4fr 1fr;grid-template-rows:auto auto}
+.clock{font-family:var(--display);font-size:clamp(52px,8vw,96px);font-weight:500;line-height:.95;letter-spacing:-.02em;font-variant-numeric:tabular-nums}
+.clock .sec{font-size:.33em;color:var(--muted);margin-left:6px}
+.date{font-size:19px;color:var(--muted);text-transform:capitalize}
+.wx-now{display:flex;align-items:center;gap:12px}
+.wx-ico{font-size:40px;line-height:1}
+.wx-temp{font-family:var(--display);font-size:40px;font-weight:500}
+.wx-days{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;border-top:1px solid var(--line);padding-top:10px}
+.wx-day{display:flex;flex-direction:column;align-items:center;gap:1px;font-size:13px}
+.wx-day b{font-weight:500;color:var(--muted);text-transform:capitalize}
+.wx-day .e{font-size:22px}
+.today-cols{display:grid;grid-template-columns:repeat(3,1fr);gap:12px}
+.today-cols h3{margin:0 0 6px;font-size:14px;font-weight:600;display:flex;align-items:center;gap:6px}
+.ev{font-size:13px;padding:6px 8px;border-radius:8px;background:var(--panel2);margin-bottom:6px;border-left:3px solid var(--c,var(--muted))}
+.ev b{display:block;font-weight:500;font-variant-numeric:tabular-nums;color:var(--muted);font-size:12px}
+.ev span{overflow-wrap:anywhere}
+.macro{display:grid;grid-template-columns:72px 1fr auto;gap:8px;align-items:center;font-size:14px}
+.macro .num{font-size:14px}
+.big-p{font-family:var(--display);font-size:38px;font-weight:500;font-variant-numeric:tabular-nums}
+.big-p small{font-size:16px;color:var(--muted)}
+.fuel-mini{display:grid;grid-template-columns:auto 1fr auto;gap:6px 10px;font-size:14px;align-items:baseline}
+.fuel-mini .num{font-size:20px;font-weight:500}
+.heat-temp{font-family:var(--display);font-size:44px;font-weight:500}
+
 /* Agenda */
-#cal{grid-area:cal;padding:14px}
-#cal iframe{flex:1;width:100%;border:0;border-radius:10px;background:#fff}
-.hint{color:var(--muted);font-size:15px;line-height:1.5;margin:0}
-.hint b{color:var(--fg)}
-.status{font-size:13px;color:var(--muted)}
-.err{color:var(--bad)}
-/* Réglages */
-.gear{position:fixed;right:max(10px,env(safe-area-inset-right));bottom:max(8px,env(safe-area-inset-bottom));background:var(--panel);border:1px solid var(--line);color:var(--muted);border-radius:999px;width:40px;height:40px;font-size:20px;opacity:.6}
-dialog{background:var(--panel);color:var(--fg);border:1px solid var(--line);border-radius:16px;padding:22px;width:min(520px,92vw)}
-dialog::backdrop{background:rgba(0,0,0,.6)}
-dialog h2{font-family:var(--display);margin:0 0 14px;font-weight:500}
-dialog label{display:block;font-size:14px;color:var(--muted);margin:12px 0 6px}
-dialog input,dialog select{width:100%;background:var(--bg);border:1px solid var(--line);border-radius:10px;color:var(--fg);padding:11px;font:16px var(--body);-webkit-user-select:text;user-select:text}
-dialog .row{display:flex;gap:10px;justify-content:flex-end;margin-top:18px}
-dialog .btn{padding:12px 18px}
-button{cursor:pointer}
-button:focus-visible,input:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
-/* Portrait ou petit écran : une colonne qui défile */
-@media (max-width:900px),(orientation:portrait){
+#v-agenda .grid{grid-template-columns:repeat(3,1fr)}
+.day-h{font-size:12px;text-transform:uppercase;letter-spacing:.1em;color:var(--muted);margin:10px 0 6px}
+.day-h.today{color:var(--accent)}
+.agenda-col{overflow:auto}
+
+/* Cuisine */
+#v-cuisine .grid{grid-template-columns:1fr 1.4fr}
+.cat-h{font-size:12px;letter-spacing:.1em;text-transform:uppercase;color:var(--muted);margin:10px 0 2px}
+.recipes{display:grid;grid-template-columns:repeat(auto-fill,minmax(220px,1fr));gap:10px;overflow:auto;align-content:start}
+.rc{background:var(--panel2);border:1px solid var(--line);border-radius:12px;padding:12px;text-align:left;color:var(--fg);display:flex;flex-direction:column;gap:6px}
+.rc h4{margin:0;font-size:15px;font-weight:600}
+.pill{display:inline-block;font-size:12px;border-radius:999px;padding:2px 8px;font-weight:600}
+.pill.ok{background:rgba(92,196,138,.18);color:var(--good)}
+.pill.mid{background:rgba(233,162,59,.18);color:var(--warn)}
+.pill.no{background:rgba(232,118,106,.15);color:var(--bad)}
+.rc .mac{font-size:12px;color:var(--muted);font-variant-numeric:tabular-nums}
+
+/* Courses */
+#v-courses .grid{grid-template-columns:1.3fr 1fr}
+.budget-big{display:flex;gap:18px;flex-wrap:wrap}
+.budget-big div{display:flex;flex-direction:column}
+.budget-big .num{font-size:28px;font-weight:500}
+.price{font-variant-numeric:tabular-nums;color:var(--muted);font-size:14px}
+.box{flex:none;width:26px;height:26px;border-radius:8px;border:2px solid var(--muted);background:transparent;color:#1a1405;font-weight:700;padding:0}
+.done .box{background:var(--good);border-color:var(--good)}
+.done .grow{color:var(--muted);text-decoration:line-through}
+
+/* Nutrition */
+#v-nutri .grid{grid-template-columns:1fr 1.2fr}
+.week{display:flex;align-items:flex-end;gap:8px;height:140px;position:relative;padding-top:6px}
+.week .col{flex:1;display:flex;flex-direction:column;align-items:center;gap:4px;height:100%;justify-content:flex-end}
+.week .col i{display:block;width:100%;max-width:34px;border-radius:6px 6px 2px 2px;background:var(--p1)}
+.week .col.hit i{background:var(--good)}
+.week .col span{font-size:11px;color:var(--muted);text-transform:capitalize}
+.week .goal{position:absolute;left:0;right:0;border-top:1px dashed var(--accent);opacity:.7}
+
+/* Carburant */
+#v-fuel .grid{grid-template-columns:1fr}
+.st{display:grid;grid-template-columns:1fr auto;gap:2px 12px;padding:10px 0;border-bottom:1px solid var(--line)}
+.st:first-child .num{color:var(--good)}
+.st .num{grid-row:span 2;align-self:center;font-size:24px;font-weight:500}
+
+/* Fenêtres */
+.modal{position:fixed;inset:0;background:rgba(0,0,0,.6);display:flex;align-items:center;justify-content:center;padding:16px;z-index:20}
+.modal[hidden]{display:none}
+.sheet{background:var(--panel);border:1px solid var(--line);border-radius:16px;padding:20px;width:min(620px,100%);max-height:100%;overflow:auto;display:flex;flex-direction:column;gap:10px}
+.sheet h2{font-family:var(--display);margin:0;font-weight:500}
+.sheet label{font-size:13px;color:var(--muted);margin-top:4px}
+.sheet input,.sheet select{width:100%}
+.sheet ol{margin:0;padding-left:20px;line-height:1.6}
+.toast{position:fixed;left:50%;bottom:90px;transform:translateX(-50%);background:var(--fg);color:var(--bg);padding:10px 16px;border-radius:10px;font-weight:500;z-index:30}
+.toast[hidden]{display:none}
+
+@media (max-width:1000px),(orientation:portrait){
   body{overflow:auto}
-  .grid{height:auto;grid-template-columns:1fr 1fr;grid-template-rows:auto;grid-template-areas:"time time" "fuel todo" "cal cal"}
-  #cal{height:60vh}
-  .todos{max-height:40vh}
+  #v-home .grid,#v-agenda .grid,#v-cuisine .grid,#v-courses .grid,#v-nutri .grid{grid-template-columns:1fr 1fr}
+  #v-home .span2{grid-column:span 2}
 }
-@media (max-width:600px){.grid{grid-template-columns:1fr;grid-template-areas:"time" "fuel" "todo" "cal"}}
+@media (max-width:640px){
+  #v-home .grid,#v-agenda .grid,#v-cuisine .grid,#v-courses .grid,#v-nutri .grid{grid-template-columns:1fr}
+  #v-home .span2{grid-column:auto}
+  .today-cols{grid-template-columns:1fr}
+  nav.tabs button{font-size:10px}
+}
 @media (prefers-reduced-motion:reduce){*{transition:none!important}}
 </style>
 </head>
 <body>
-<main class="grid">
-  <section class="panel" id="time" aria-label="Heure et météo">
-    <div class="clock" id="clock">--:--</div>
-    <div class="date" id="date"></div>
-    <div class="wx-now"><span class="wx-ico" id="wxIco"></span><span class="wx-temp" id="wxTemp">--°</span>
-      <div><div id="wxDesc" class="wx-desc">Chargement de la météo…</div><div id="wxPlace" class="status"></div></div></div>
-    <div class="wx-days" id="wxDays"></div>
-  </section>
 
-  <section class="panel" id="fuel" aria-label="Prix des carburants">
-    <div class="label">Carburant · 5 km <small id="fuelStatus"></small></div>
-    <div class="fuel-tabs" id="fuelTabs"></div>
-    <ul class="stations" id="stations"><li class="empty">Recherche des stations…</li></ul>
-  </section>
-
-  <section class="panel" id="todo" aria-label="Tâches et courses">
-    <div class="label">Tâches &amp; courses <small id="todoCount"></small></div>
-    <form class="add" id="addForm">
-      <input id="newTodo" placeholder="Ajouter (ex. lait, appeler le plombier)" autocomplete="off" enterkeyhint="done">
-      <button class="btn" type="submit" aria-label="Ajouter">+</button>
-    </form>
-    <ul class="todos" id="todos"></ul>
-    <button class="btn ghost" id="clearDone" type="button" style="padding:10px">Retirer les éléments cochés</button>
-  </section>
-
-  <section class="panel" id="cal" aria-label="Agenda">
-    <div class="label" style="padding:4px 6px 0">Agenda</div>
-    <div id="calBody" style="flex:1;display:flex;min-height:0"></div>
-  </section>
-</main>
-
-<button class="gear" id="gear" aria-label="Réglages">⚙︎</button>
-
-<dialog id="settings">
-  <form method="dialog" id="setForm">
-    <h2>Réglages</h2>
-    <label for="sCity">Ville (météo et stations)</label>
-    <input id="sCity" placeholder="ex. Bordeaux">
-    <label for="sFuel">Carburant affiché par défaut</label>
-    <select id="sFuel"></select>
-    <label for="sCal">Agenda Google : adresse e-mail ou ID du calendrier</label>
-    <input id="sCal" placeholder="prenom.nom@gmail.com" autocapitalize="off" autocorrect="off">
-    <p class="hint" style="margin-top:10px">L'agenda s'affiche si ce compte Google est connecté dans Safari sur l'iPad.</p>
-    <div class="row">
-      <button class="btn ghost" type="button" id="sCancel">Annuler</button>
-      <button class="btn" value="ok" type="submit" id="sSave">Enregistrer</button>
+<!-- ============ ACCUEIL ============ -->
+<section class="view" id="v-home">
+  <div class="grid">
+    <div class="panel">
+      <div class="clock" id="clock">--:--</div>
+      <div class="date" id="date"></div>
+      <div class="wx-now"><span class="wx-ico" id="wxIco"></span><span class="wx-temp" id="wxTemp">--°</span>
+        <div><div id="wxDesc" class="small muted">Chargement de la météo…</div><div id="wxPlace" class="small muted"></div></div></div>
+      <div class="wx-days" id="wxDays"></div>
     </div>
-  </form>
-</dialog>
+    <div class="panel">
+      <div class="label">Aujourd'hui <small id="todayRange"></small></div>
+      <div class="today-cols" id="todayCols"></div>
+    </div>
+    <div class="panel">
+      <div class="label"><span id="nutriWho">Nutrition</span> <small>objectifs du jour</small></div>
+      <div class="big-p" id="homeProt">0 <small>/ 160 g protéines</small></div>
+      <div id="homeMacros" style="display:flex;flex-direction:column;gap:8px"></div>
+      <button class="btn ghost sm" data-go="nutri" type="button">Ajouter ce que j'ai mangé</button>
+    </div>
+    <div class="panel">
+      <div class="label">Courses <small id="homeBudgetPeriod"></small></div>
+      <div id="homeBudget"></div>
+      <button class="btn ghost sm" data-go="courses" type="button">Voir la liste</button>
+    </div>
+    <div class="panel">
+      <div class="label">Carburant le moins cher <small>autour de chez vous</small></div>
+      <div class="fuel-mini" id="homeFuel"><span class="muted small">Recherche…</span></div>
+      <button class="btn ghost sm" data-go="fuel" type="button">Toutes les stations</button>
+    </div>
+    <div class="panel">
+      <div class="label">Chauffage</div>
+      <div class="heat-temp">— °C</div>
+      <p class="empty" style="margin:0">Pas encore relié. Le réglage de la température s'affichera ici une fois le thermostat connecté.</p>
+    </div>
+  </div>
+</section>
+
+<!-- ============ AGENDA ============ -->
+<section class="view" id="v-agenda" hidden>
+  <div class="grid" id="agendaGrid"></div>
+</section>
+
+<!-- ============ CUISINE ============ -->
+<section class="view" id="v-cuisine" hidden>
+  <div class="grid">
+    <div class="panel">
+      <div class="label">Dans le frigo <small id="fridgeCount"></small></div>
+      <form class="row" id="fridgeForm">
+        <input id="fridgeIn" class="grow" list="foodList" placeholder="Ajouter (ex. œufs, poulet, skyr)" autocomplete="off">
+        <input id="fridgeQty" style="width:110px" placeholder="Quantité">
+        <button class="btn" type="submit">Ajouter</button>
+      </form>
+      <div id="fridgeList" style="overflow:auto;flex:1"></div>
+    </div>
+    <div class="panel">
+      <div class="label">Que manger ? <small>portion pour 1 personne</small></div>
+      <div class="row" id="recipeFilter"></div>
+      <div class="recipes" id="recipeList"></div>
+    </div>
+  </div>
+</section>
+
+<!-- ============ COURSES ============ -->
+<section class="view" id="v-courses" hidden>
+  <div class="grid">
+    <div class="panel">
+      <div class="label">Liste de courses <small id="shopCount"></small></div>
+      <form class="row" id="shopForm">
+        <input id="shopIn" class="grow" list="foodList" placeholder="Article (ex. lait, riz)" autocomplete="off">
+        <input id="shopPrice" style="width:100px" inputmode="decimal" placeholder="Prix €">
+        <button class="btn" type="submit">Ajouter</button>
+      </form>
+      <ul class="list" id="shopList" style="flex:1"></ul>
+      <div class="row">
+        <button class="btn ghost sm" id="shopToFridge" type="button">Ranger les articles achetés dans le frigo</button>
+      </div>
+    </div>
+    <div class="panel">
+      <div class="label">Budget <small>défini par Maman</small></div>
+      <div class="row">
+        <input id="budgetAmt" style="width:120px" inputmode="decimal" placeholder="Montant €">
+        <select id="budgetPeriod"><option value="week">par semaine</option><option value="month">par mois</option></select>
+        <button class="btn sm" id="budgetSave" type="button">Enregistrer</button>
+      </div>
+      <div class="budget-big" id="budgetBig"></div>
+      <div class="bar" id="budgetBar"><i style="width:0"></i></div>
+      <p class="small muted" style="margin:0" id="budgetNote"></p>
+      <div class="label" style="margin-top:6px">Suggestions <small>les basiques absents du frigo</small></div>
+      <div class="row" id="shopSuggest"></div>
+      <div class="label" style="margin-top:6px">Dépenses de la période</div>
+      <ul class="list small" id="spentList"></ul>
+    </div>
+  </div>
+</section>
+
+<!-- ============ NUTRITION ============ -->
+<section class="view" id="v-nutri" hidden>
+  <div class="grid">
+    <div class="panel">
+      <div class="label"><span id="nutriTitle">Apports du jour</span> <button class="btn ghost sm" id="targetsBtn" type="button">Objectifs</button></div>
+      <div id="nutriBars" style="display:flex;flex-direction:column;gap:10px"></div>
+      <div class="label" style="margin-top:8px">Protéines sur 7 jours</div>
+      <div class="week" id="week"></div>
+    </div>
+    <div class="panel">
+      <div class="label">Ajouter un aliment</div>
+      <form class="row" id="nutriForm">
+        <input id="nutriFood" class="grow" list="foodList" placeholder="Aliment (ex. blanc de poulet)" autocomplete="off">
+        <input id="nutriGrams" style="width:100px" inputmode="numeric" placeholder="g">
+        <button class="btn" type="submit">Ajouter</button>
+      </form>
+      <div class="row" id="quickFoods"></div>
+      <div class="label" style="margin-top:6px">Mangé aujourd'hui</div>
+      <ul class="list" id="nutriLog" style="flex:1"></ul>
+    </div>
+  </div>
+</section>
+
+<!-- ============ CARBURANT ============ -->
+<section class="view" id="v-fuel" hidden>
+  <div class="grid">
+    <div class="panel">
+      <div class="label">Stations à moins de 7 km <small id="fuelStatus"></small></div>
+      <div class="row" id="fuelTabs"></div>
+      <div id="stations"></div>
+    </div>
+  </div>
+</section>
+
+<nav class="tabs" role="tablist">
+  <button role="tab" data-tab="home" aria-selected="true"><b>⌂</b>Accueil</button>
+  <button role="tab" data-tab="agenda"><b>▦</b>Agendas</button>
+  <button role="tab" data-tab="cuisine"><b>◍</b>Frigo &amp; repas</button>
+  <button role="tab" data-tab="courses"><b>☰</b>Courses</button>
+  <button role="tab" data-tab="nutri"><b>◔</b>Nutrition</button>
+  <button role="tab" data-tab="fuel"><b>⛽︎</b>Carburant</button>
+  <button class="gear" id="gearBtn" type="button" aria-label="Réglages"><b>⚙︎</b>Réglages</button>
+</nav>
+
+<datalist id="foodList"></datalist>
+
+<!-- Fenêtre recette -->
+<div class="modal" id="recipeModal" hidden><div class="sheet" id="recipeSheet"></div></div>
+
+<!-- Fenêtre objectifs -->
+<div class="modal" id="targetsModal" hidden><div class="sheet">
+  <h2>Objectifs quotidiens</h2>
+  <label for="tP">Protéines (g)</label><input id="tP" inputmode="numeric">
+  <label for="tK">Calories (kcal)</label><input id="tK" inputmode="numeric">
+  <label for="tC">Glucides (g)</label><input id="tC" inputmode="numeric">
+  <label for="tF">Lipides (g)</label><input id="tF" inputmode="numeric">
+  <div class="row" style="justify-content:flex-end;margin-top:8px">
+    <button class="btn ghost" type="button" data-close>Annuler</button>
+    <button class="btn" type="button" id="tSave">Enregistrer</button>
+  </div>
+</div></div>
+
+<!-- Fenêtre réglages -->
+<div class="modal" id="setModal" hidden><div class="sheet">
+  <h2>Réglages</h2>
+  <label for="sAddr">Adresse (pour la météo et les stations)</label>
+  <input id="sAddr" placeholder="ex. 10 rue …, Bayonne">
+  <label>Personnes et liens d'agenda (iCal / .ics, Pronote, iCloud…)</label>
+  <div id="sPeople" style="display:flex;flex-direction:column;gap:10px"></div>
+  <label for="sRelay">Adresse du relais</label>
+  <input id="sRelay" placeholder="https://…workers.dev" autocapitalize="off" autocorrect="off">
+  <label for="sToken">Clé du relais</label>
+  <input id="sToken" autocapitalize="off" autocorrect="off" type="password">
+  <p class="small muted" style="margin:0">Ces réglages restent sur cet appareil. Ils ne sont jamais publiés sur GitHub.</p>
+  <div class="row" style="justify-content:flex-end;margin-top:8px">
+    <button class="btn ghost" type="button" data-close>Annuler</button>
+    <button class="btn" type="button" id="sSave">Enregistrer</button>
+  </div>
+</div></div>
+
+<div class="toast" id="toast" hidden></div>
 
 <script>
 (function(){
 'use strict';
-var $=function(id){return document.getElementById(id)};
-function load(k,d){try{var v=localStorage.getItem('maison.'+k);return v===null?d:JSON.parse(v)}catch(e){return d}}
-function save(k,v){try{localStorage.setItem('maison.'+k,JSON.stringify(v))}catch(e){}}
+
+/* ================= Outils ================= */
+function $(id){return document.getElementById(id)}
 function el(tag,cls,txt){var e=document.createElement(tag);if(cls)e.className=cls;if(txt!=null)e.textContent=txt;return e}
+function lsGet(k,d){try{var v=localStorage.getItem('maison.'+k);return v===null?d:JSON.parse(v)}catch(e){return d}}
+function lsSet(k,v){try{localStorage.setItem('maison.'+k,JSON.stringify(v))}catch(e){}}
+function norm(s){return String(s||'').toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g,'').replace(/œ/g,'oe').trim()}
+function r0(x){return Math.round(x)}
+function eur(x){return (Math.round(x*100)/100).toFixed(2).replace('.',',')+' €'}
+function pad(n){return ('0'+n).slice(-2)}
+function dayKey(d){d=d||new Date();return d.getFullYear()+'-'+pad(d.getMonth()+1)+'-'+pad(d.getDate())}
+function uid(){return Date.now().toString(36)+Math.random().toString(36).slice(2,7)}
+function getJSON(u,opt){return fetch(u,opt).then(function(r){if(!r.ok)throw new Error('HTTP '+r.status);return r.json()})}
+var toastT;function toast(m){var t=$('toast');t.textContent=m;t.hidden=false;clearTimeout(toastT);toastT=setTimeout(function(){t.hidden=true},2600)}
+function clear(n){while(n.firstChild)n.removeChild(n.firstChild);return n}
 
-var cfg=load('cfg',{city:'',lat:null,lon:null,place:'',fuel:'gazole',cal:''});
-
-/* ---------- Horloge ---------- */
-var dFmt=new Intl.DateTimeFormat('fr-FR',{weekday:'long',day:'numeric',month:'long'});
-function tick(){
-  var n=new Date(),h=('0'+n.getHours()).slice(-2),m=('0'+n.getMinutes()).slice(-2),s=('0'+n.getSeconds()).slice(-2);
-  var c=$('clock');c.textContent=h+':'+m;var sp=el('span','sec',s);c.appendChild(sp);
-  $('date').textContent=dFmt.format(n);
+/* ================= Aliments (valeurs pour 100 g, prix indicatifs) ================= */
+// id, nom, catégorie, kcal, prot, gluc, lip, portion (g), prix (€), unité de prix, basique ?
+var FOODS=[
+['oeufs','Œufs','Frais',143,12.6,0.7,9.9,120,3.2,'boîte de 12',1],
+['poulet','Blanc de poulet','Viande & poisson',121,26,0,1.5,150,11,'le kg',1],
+['dinde','Escalope de dinde','Viande & poisson',110,24,0,1.5,150,12,'le kg',0],
+['boeuf','Bœuf haché 5 %','Viande & poisson',137,21,0,5,125,6.5,'500 g',1],
+['jambon','Jambon blanc','Viande & poisson',110,20,1,3,80,2.8,'4 tranches',1],
+['saumon','Saumon','Viande & poisson',208,20,0,13,125,6,'2 pavés',0],
+['thon','Thon au naturel','Épicerie',116,26,0,1,100,4.5,'3 boîtes',1],
+['skyr','Skyr','Frais',63,11,4,0.2,150,2.2,'450 g',1],
+['fblanc','Fromage blanc 0 %','Frais',46,7.5,4,0.1,200,2.6,'1 kg',0],
+['lait','Lait demi-écrémé','Frais',46,3.3,4.8,1.6,250,6,'6 L',1],
+['emmental','Emmental râpé','Frais',380,28,0,29,30,2.5,'200 g',1],
+['mozza','Mozzarella','Frais',250,18,2,19,125,1,'125 g',0],
+['creme','Crème fraîche légère','Frais',160,3,4,15,40,1.5,'20 cl',0],
+['beurre','Beurre','Frais',740,0.7,0.6,82,10,2.6,'250 g',0],
+['whey','Whey (protéine en poudre)','Épicerie',380,78,6,6,30,25,'1 kg',0],
+['riz','Riz','Épicerie',350,7,78,0.6,80,2,'1 kg',1],
+['pates','Pâtes','Épicerie',355,12.5,71,1.5,100,1.8,'1 kg',1],
+['avoine','Flocons d\'avoine','Épicerie',370,13,59,7,80,2.2,'1 kg',1],
+['pain','Pain complet','Épicerie',240,9,43,3,80,2,'1 pain',1],
+['wraps','Tortillas (wraps)','Épicerie',300,8,50,7,60,2.5,'8 wraps',0],
+['lentilles','Lentilles','Épicerie',330,24,48,1.5,80,2,'500 g',0],
+['poischiches','Pois chiches','Épicerie',120,7,15,2.5,130,1.2,'boîte 400 g',0],
+['hrouges','Haricots rouges','Épicerie',110,8,14,0.5,130,1.2,'boîte 400 g',0],
+['passata','Sauce tomate','Épicerie',30,1.5,5,0.2,100,1.5,'700 g',1],
+['pbeurre','Beurre de cacahuète','Épicerie',600,25,15,50,20,3.5,'350 g',0],
+['amandes','Amandes','Épicerie',600,21,7,52,30,3,'200 g',0],
+['huile','Huile d\'olive','Épicerie',900,0,0,100,10,9,'1 L',0],
+['pdt','Pommes de terre','Fruits & légumes',80,2,17,0.1,250,3.5,'2,5 kg',1],
+['patated','Patate douce','Fruits & légumes',86,1.6,20,0.1,200,3,'1 kg',0],
+['brocoli','Brocoli','Fruits & légumes',34,2.8,4,0.4,150,2,'500 g',1],
+['hverts','Haricots verts','Fruits & légumes',31,1.8,4,0.2,150,2.5,'1 kg surgelés',0],
+['courgette','Courgette','Fruits & légumes',17,1.2,2,0.3,200,2.5,'1 kg',0],
+['tomate','Tomates','Fruits & légumes',18,0.9,3,0.2,150,3,'1 kg',1],
+['carotte','Carottes','Fruits & légumes',41,0.9,7,0.2,100,1.5,'1 kg',1],
+['oignon','Oignons','Fruits & légumes',40,1.1,8,0.1,50,1.8,'1 kg',1],
+['poivron','Poivrons','Fruits & légumes',26,1,4.5,0.3,150,2.5,'lot de 3',0],
+['epinards','Épinards','Fruits & légumes',23,2.9,1.4,0.4,150,2.5,'1 kg surgelés',0],
+['champi','Champignons','Fruits & légumes',22,3,1,0.3,125,2.5,'500 g',0],
+['salade','Salade','Fruits & légumes',15,1.3,1.5,0.2,80,1,'1 salade',0],
+['avocat','Avocat','Fruits & légumes',160,2,2,15,100,1.2,'1 avocat',0],
+['banane','Bananes','Fruits & légumes',89,1.1,20,0.3,120,2,'1 kg',1],
+['pomme','Pommes','Fruits & légumes',52,0.3,12,0.2,150,2.5,'1 kg',1]
+].map(function(a){return{id:a[0],n:a[1],cat:a[2],kcal:a[3],p:a[4],c:a[5],f:a[6],portion:a[7],price:a[8],pu:a[9],basic:!!a[10]}});
+var FOOD={};FOODS.forEach(function(f){FOOD[f.id]=f});
+var STAPLES={huile:1}; // supposés toujours dans le placard
+function findFood(name){
+  var n=norm(name);if(!n)return null;
+  for(var i=0;i<FOODS.length;i++)if(norm(FOODS[i].n)===n)return FOODS[i];
+  for(i=0;i<FOODS.length;i++){var fn=norm(FOODS[i].n);if(fn.indexOf(n)===0||n.indexOf(fn)>=0)return FOODS[i]}
+  var w=n.split(/\s+/)[0].replace(/s$/,'');
+  for(i=0;i<FOODS.length;i++)if(w.length>2&&norm(FOODS[i].n).indexOf(w)>=0)return FOODS[i];
+  return null;
 }
+function macros(items){var m={kcal:0,p:0,c:0,f:0};items.forEach(function(it){var f=FOOD[it[0]];if(!f)return;var k=it[1]/100;m.kcal+=f.kcal*k;m.p+=f.p*k;m.c+=f.c*k;m.f+=f.f*k});return m}
+
+/* ================= Recettes (grammes par portion) ================= */
+var RECIPES=[
+['Poulet, riz et brocoli',[['poulet',150],['riz',80],['brocoli',150],['huile',5]],['Cuire le riz 12 min.','Faire dorer le poulet en dés à la poêle avec l\'huile.','Cuire le brocoli 6 min à la vapeur ou à l\'eau.']],
+['Omelette épinards et fromage',[['oeufs',180],['epinards',100],['emmental',20]],['Faire tomber les épinards à la poêle.','Verser les 3 œufs battus, ajouter le fromage, plier.']],
+['Pâtes bolognaise',[['pates',100],['boeuf',125],['passata',100],['oignon',30],['emmental',15]],['Cuire les pâtes.','Faire revenir l\'oignon et le bœuf, ajouter la sauce tomate 10 min.','Servir avec le fromage.']],
+['Wraps poulet avocat',[['wraps',120],['poulet',120],['avocat',50],['salade',30],['tomate',50]],['Griller le poulet en lamelles.','Garnir 2 wraps avec poulet, avocat, salade et tomate.']],
+['Bowl saumon, riz, avocat',[['saumon',125],['riz',70],['avocat',60],['carotte',50]],['Cuire le riz.','Cuire le saumon 4 min par face.','Assembler avec avocat et carotte râpée.']],
+['Chili con carne',[['boeuf',125],['hrouges',130],['passata',100],['oignon',40],['poivron',75],['riz',60]],['Faire revenir oignon, poivron et bœuf.','Ajouter sauce tomate et haricots, mijoter 15 min.','Servir avec le riz.']],
+['Porridge protéiné',[['avoine',80],['lait',200],['whey',30],['banane',100]],['Cuire l\'avoine dans le lait 3 min.','Hors du feu, mélanger la whey, ajouter la banane.']],
+['Bol skyr, avoine, banane',[['skyr',250],['avoine',40],['banane',100],['pbeurre',15]],['Tout mélanger dans un bol.']],
+['Salade thon et pois chiches',[['thon',100],['poischiches',130],['tomate',100],['oignon',20],['huile',5]],['Égoutter thon et pois chiches.','Mélanger avec tomate, oignon, huile, sel, poivre.']],
+['Dahl de lentilles',[['lentilles',80],['passata',100],['oignon',40],['carotte',60],['riz',50]],['Faire revenir oignon et carotte.','Ajouter lentilles, sauce tomate et 3 fois leur volume d\'eau, cuire 20 min.','Servir avec le riz.']],
+['Gratin de pâtes au jambon',[['pates',100],['jambon',80],['creme',40],['emmental',30]],['Cuire les pâtes.','Mélanger avec jambon et crème, couvrir de fromage.','Gratiner 15 min à 200 °C.']],
+['Dinde, patate douce, haricots verts',[['dinde',150],['patated',200],['hverts',150],['huile',5]],['Rôtir la patate douce en cubes 25 min à 200 °C.','Poêler la dinde, cuire les haricots verts.']],
+['Croque-monsieur',[['pain',100],['jambon',60],['emmental',30]],['Garnir le pain de jambon et fromage.','Cuire 10 min au four ou à la poêle.']],
+['Shakshuka',[['oeufs',120],['passata',150],['poivron',75],['oignon',40],['pain',60]],['Faire revenir oignon et poivron, ajouter la sauce.','Casser les œufs dedans, couvrir 6 min.','Servir avec le pain.']],
+['Steak haché, purée, haricots verts',[['boeuf',125],['pdt',250],['lait',50],['beurre',10],['hverts',150]],['Cuire les pommes de terre 20 min, écraser avec lait et beurre.','Cuire le steak et les haricots verts.']],
+['Poêlée poulet courgettes',[['poulet',150],['courgette',200],['oignon',30],['riz',70],['huile',5]],['Cuire le riz.','Poêler poulet, oignon et courgette en dés 12 min.']],
+['Tortilla espagnole',[['oeufs',180],['pdt',200],['oignon',40],['huile',10]],['Cuire pommes de terre et oignon en fines tranches à la poêle.','Ajouter les œufs battus, cuire à couvert puis retourner.']],
+['Shaker protéiné banane',[['lait',300],['whey',30],['banane',120],['pbeurre',15]],['Mixer le tout.']],
+['Salade caprese au poulet',[['mozza',125],['tomate',150],['poulet',100],['huile',5]],['Trancher tomate et mozzarella, ajouter le poulet grillé, l\'huile et du basilic.']],
+['Pâtes au thon et tomate',[['pates',100],['thon',100],['passata',100],['oignon',20]],['Cuire les pâtes.','Chauffer sauce, oignon et thon 5 min, mélanger.']],
+['Fromage blanc, pomme, amandes',[['fblanc',250],['pomme',150],['amandes',20]],['Couper la pomme, mélanger avec fromage blanc et amandes.']],
+['Riz sauté aux œufs et légumes',[['riz',80],['oeufs',120],['carotte',60],['poivron',60],['huile',10]],['Cuire le riz (idéalement la veille).','Sauter légumes puis riz à feu vif, ajouter les œufs brouillés.']]
+].map(function(a,i){return{id:'r'+i,n:a[0],ing:a[1],steps:a[2],m:macros(a[1])}});
+
+FOODS.forEach(function(f){var o=document.createElement('option');o.value=f.n;$('foodList').appendChild(o)});
+
+/* ================= Réglages locaux (jamais publiés) ================= */
+var COLORS=['var(--p1)','var(--p2)','var(--p3)'];
+var cfg=lsGet('cfg',null);
+if(!cfg||!cfg.people){var old=cfg||{};cfg={addr:'',lat:43.4929,lon:-1.4748,place:'Bayonne',relay:'',token:'',fuel:'e85',
+  people:[{name:'Moi',ics:''},{name:'Frère',ics:''},{name:'Maman',ics:''}],nutriPerson:0};if(old.fuel)cfg.fuel=old.fuel}
+function saveCfg(){lsSet('cfg',cfg)}
+// Lien de configuration : #setup=… (base64 JSON). Le # n'est jamais envoyé au serveur.
+(function(){var h=location.hash;if(h.indexOf('#setup=')!==0)return;
+  try{var j=JSON.parse(decodeURIComponent(escape(atob(h.slice(7).replace(/-/g,'+').replace(/_/g,'/')))));
+    Object.keys(j).forEach(function(k){cfg[k]=j[k]});saveCfg();setTimeout(function(){toast('Configuration importée')},300)}catch(e){setTimeout(function(){toast('Lien de configuration invalide')},300)}
+  try{history.replaceState(null,'',location.pathname)}catch(e){location.hash=''}
+})();
+
+/* ================= Données partagées (frigo, courses, budget, nutrition) ================= */
+var state=lsGet('state',null)||{updatedAt:0,fridge:[],shop:[],spent:[],budget:{amount:0,period:'week'},nut:{targets:{p:160,kcal:2800,c:330,f:80},log:{}}};
+var pushT=null,syncOK=false;
+function relayOK(){return !!(cfg.relay&&cfg.token)}
+function relayURL(p){return cfg.relay.replace(/\/+$/,'')+p}
+function persist(){state.updatedAt=Date.now();lsSet('state',state);renderAll();
+  if(relayOK()){clearTimeout(pushT);pushT=setTimeout(push,800)}}
+function push(){fetch(relayURL('/data'),{method:'PUT',headers:{'X-Token':cfg.token,'Content-Type':'application/json'},body:JSON.stringify(state)}).catch(function(){})}
+function pull(){if(!relayOK())return;
+  getJSON(relayURL('/data'),{headers:{'X-Token':cfg.token}}).then(function(remote){syncOK=true;
+    if(remote&&remote.updatedAt>state.updatedAt){state=remote;lsSet('state',state);renderAll()}
+    else if(!remote||remote.updatedAt<state.updatedAt)push();
+  }).catch(function(){syncOK=false})}
+
+/* ================= Onglets ================= */
+var current='home';
+function go(tab){current=tab;
+  Array.prototype.forEach.call(document.querySelectorAll('.view'),function(v){v.hidden=v.id!=='v-'+tab});
+  Array.prototype.forEach.call(document.querySelectorAll('nav.tabs [data-tab]'),function(b){b.setAttribute('aria-selected',b.getAttribute('data-tab')===tab)});
+  if(tab==='fuel')fuelList();
+}
+Array.prototype.forEach.call(document.querySelectorAll('[data-tab]'),function(b){b.onclick=function(){go(b.getAttribute('data-tab'))}});
+Array.prototype.forEach.call(document.querySelectorAll('[data-go]'),function(b){b.onclick=function(){go(b.getAttribute('data-go'))}});
+Array.prototype.forEach.call(document.querySelectorAll('.modal'),function(m){m.addEventListener('click',function(e){if(e.target===m||e.target.hasAttribute('data-close'))m.hidden=true})});
+var idleT;function idle(){clearTimeout(idleT);idleT=setTimeout(function(){if(current!=='home')go('home')},5*60*1000)}
+document.addEventListener('touchstart',idle,{passive:true});document.addEventListener('click',idle);
+
+/* ================= Horloge ================= */
+var dFmt=new Intl.DateTimeFormat('fr-FR',{weekday:'long',day:'numeric',month:'long'});
+function tick(){var n=new Date(),c=$('clock');c.textContent=pad(n.getHours())+':'+pad(n.getMinutes());c.appendChild(el('span','sec',pad(n.getSeconds())));$('date').textContent=dFmt.format(n)}
 tick();setInterval(tick,1000);
 
-/* ---------- Météo (Open-Meteo, sans clé) ---------- */
-var WX={0:['☀️','Ciel dégagé'],1:['🌤️','Plutôt ensoleillé'],2:['⛅','Partiellement nuageux'],3:['☁️','Couvert'],45:['🌫️','Brouillard'],48:['🌫️','Brouillard givrant'],
-51:['🌦️','Bruine légère'],53:['🌦️','Bruine'],55:['🌧️','Bruine forte'],56:['🌧️','Bruine verglaçante'],57:['🌧️','Bruine verglaçante'],
-61:['🌧️','Pluie faible'],63:['🌧️','Pluie'],65:['🌧️','Pluie forte'],66:['🌧️','Pluie verglaçante'],67:['🌧️','Pluie verglaçante'],
-71:['🌨️','Neige faible'],73:['🌨️','Neige'],75:['❄️','Neige forte'],77:['🌨️','Grains de neige'],80:['🌦️','Averses'],81:['🌦️','Averses'],82:['⛈️','Fortes averses'],
-85:['🌨️','Averses de neige'],86:['🌨️','Averses de neige'],95:['⛈️','Orage'],96:['⛈️','Orage et grêle'],99:['⛈️','Orage et grêle']};
+/* ================= Météo ================= */
+var WX={0:['☀️','Ciel dégagé'],1:['🌤️','Plutôt ensoleillé'],2:['⛅','Partiellement nuageux'],3:['☁️','Couvert'],45:['🌫️','Brouillard'],48:['🌫️','Brouillard givrant'],51:['🌦️','Bruine légère'],53:['🌦️','Bruine'],55:['🌧️','Bruine forte'],56:['🌧️','Bruine verglaçante'],57:['🌧️','Bruine verglaçante'],61:['🌧️','Pluie faible'],63:['🌧️','Pluie'],65:['🌧️','Pluie forte'],66:['🌧️','Pluie verglaçante'],67:['🌧️','Pluie verglaçante'],71:['🌨️','Neige faible'],73:['🌨️','Neige'],75:['❄️','Neige forte'],77:['🌨️','Grains de neige'],80:['🌦️','Averses'],81:['🌦️','Averses'],82:['⛈️','Fortes averses'],85:['🌨️','Averses de neige'],86:['🌨️','Averses de neige'],95:['⛈️','Orage'],96:['⛈️','Orage et grêle'],99:['⛈️','Orage et grêle']};
 function wx(c){return WX[c]||['🌡️','—']}
-var dayFmt=new Intl.DateTimeFormat('fr-FR',{weekday:'short'});
-
-function getJSON(u){return fetch(u).then(function(r){if(!r.ok)throw new Error('HTTP '+r.status);return r.json()})}
-
-function geocode(city){
-  return getJSON('https://geocoding-api.open-meteo.com/v1/search?count=1&language=fr&name='+encodeURIComponent(city)).then(function(g){
-    if(!g.results||!g.results.length)throw new Error('Ville introuvable');
-    var r=g.results[0];cfg.lat=r.latitude;cfg.lon=r.longitude;cfg.place=r.name+(r.admin2?' · '+r.admin2:'');save('cfg',cfg);
-  });
-}
-
+var dayShort=new Intl.DateTimeFormat('fr-FR',{weekday:'short'});
 function weather(){
-  if(cfg.lat==null){$('wxDesc').textContent='Choisis ta ville dans les réglages ⚙︎';return}
-  getJSON('https://api.open-meteo.com/v1/forecast?latitude='+cfg.lat+'&longitude='+cfg.lon+
-    '&current=temperature_2m,weather_code,apparent_temperature&daily=weather_code,temperature_2m_max,temperature_2m_min,precipitation_probability_max&timezone=auto&forecast_days=4')
-  .then(function(w){
-    var c=w.current,x=wx(c.weather_code);
-    $('wxIco').textContent=x[0];$('wxTemp').textContent=Math.round(c.temperature_2m)+'°';
-    $('wxDesc').textContent=x[1]+' · ressenti '+Math.round(c.apparent_temperature)+'°';
-    $('wxPlace').textContent=cfg.place;
-    var d=w.daily,box=$('wxDays');box.textContent='';
-    for(var i=1;i<4;i++){
-      var it=el('div','wx-day');
-      it.appendChild(el('b',null,dayFmt.format(new Date(d.time[i]+'T12:00:00'))));
-      it.appendChild(el('span',null,wx(d.weather_code[i])[0]));
-      var mm=el('span','mm',Math.round(d.temperature_2m_max[i])+'° ');mm.appendChild(el('i',null,Math.round(d.temperature_2m_min[i])+'°'));it.appendChild(mm);
-      it.appendChild(el('span','status',(d.precipitation_probability_max[i]||0)+' % pluie'));
-      box.appendChild(it);
-    }
+  getJSON('https://api.open-meteo.com/v1/forecast?latitude='+cfg.lat+'&longitude='+cfg.lon+'&current=temperature_2m,weather_code,apparent_temperature&daily=weather_code,temperature_2m_max,temperature_2m_min,precipitation_probability_max&timezone=auto&forecast_days=4')
+  .then(function(w){var c=w.current,x=wx(c.weather_code);
+    $('wxIco').textContent=x[0];$('wxTemp').textContent=r0(c.temperature_2m)+'°';
+    $('wxDesc').textContent=x[1]+' · ressenti '+r0(c.apparent_temperature)+'°';$('wxPlace').textContent=cfg.place;
+    var d=w.daily,box=clear($('wxDays'));
+    for(var i=1;i<4;i++){var it=el('div','wx-day');it.appendChild(el('b',null,dayShort.format(new Date(d.time[i]+'T12:00:00'))));
+      it.appendChild(el('span','e',wx(d.weather_code[i])[0]));it.appendChild(el('span','num',r0(d.temperature_2m_max[i])+'° / '+r0(d.temperature_2m_min[i])+'°'));
+      it.appendChild(el('span','muted',(d.precipitation_probability_max[i]||0)+' % pluie'));box.appendChild(it)}
   }).catch(function(e){$('wxDesc').textContent='Météo indisponible ('+e.message+')'});
 }
 
-/* ---------- Carburants (data.economie.gouv.fr) ---------- */
-var FUELS=[['gazole','Gazole'],['e10','SP95-E10'],['sp98','SP98'],['sp95','SP95'],['e85','E85'],['gplc','GPL']];
-function fuelTabs(){
-  var t=$('fuelTabs');t.textContent='';
-  FUELS.forEach(function(f){var b=el('button','chip',f[1]);b.type='button';b.setAttribute('aria-pressed',cfg.fuel===f[0]);
-    b.onclick=function(){cfg.fuel=f[0];save('cfg',cfg);fuelTabs();fuel()};t.appendChild(b)});
+/* ================= Carburant ================= */
+var FUELS=[['e85','E85'],['e10','SP95-E10'],['sp95','SP95'],['sp98','SP98']];
+function fuelQuery(f,km,limit){var w="within_distance(geom, geom'POINT("+cfg.lon+' '+cfg.lat+")', "+km+"km) and "+f+'_prix is not null';
+  return getJSON('https://data.economie.gouv.fr/api/explore/v2.1/catalog/datasets/prix-des-carburants-en-france-flux-instantane-v2/records?limit='+limit+'&select=adresse,ville,'+f+'_prix,'+f+'_maj&order_by='+f+'_prix&where='+encodeURIComponent(w)).then(function(j){return j.results})}
+function fuelHome(){var box=$('homeFuel');
+  Promise.all(FUELS.map(function(f){return fuelQuery(f[0],7,1).catch(function(){return null})})).then(function(res){clear(box);
+    FUELS.forEach(function(f,i){var s=res[i]&&res[i][0];box.appendChild(el('b',null,f[1]));
+      box.appendChild(el('span','small muted ell',s?(s.adresse+', '+s.ville):(res[i]?'aucune station':'indisponible')));
+      box.appendChild(el('span','num',s?s[f[0]+'_prix'].toFixed(3)+' €':'—'))})})}
+function fuelTabs(){var t=clear($('fuelTabs'));FUELS.forEach(function(f){var b=el('button','chip',f[1]);b.type='button';b.setAttribute('aria-pressed',cfg.fuel===f[0]);b.onclick=function(){cfg.fuel=f[0];saveCfg();fuelTabs();fuelList()};t.appendChild(b)})}
+function fuelList(){var box=$('stations'),f=cfg.fuel;
+  fuelQuery(f,7,10).then(function(list){clear(box);
+    if(!list.length){box.appendChild(el('p','empty','Aucune station à moins de 7 km pour ce carburant.'));return}
+    list.forEach(function(s){var d=el('div','st');d.appendChild(el('span','ell',s.adresse||'Station'));
+      var p=el('span','num',s[f+'_prix'].toFixed(3)+' €/L');d.appendChild(p);
+      var maj=s[f+'_maj']?new Date(s[f+'_maj']):null;d.appendChild(el('span','small muted',(s.ville||'')+(maj?' · prix du '+maj.toLocaleDateString('fr-FR',{day:'numeric',month:'short'}):'')));box.appendChild(d)});
+    $('fuelStatus').textContent='mis à jour à '+new Date().toLocaleTimeString('fr-FR',{hour:'2-digit',minute:'2-digit'});
+  }).catch(function(e){clear(box).appendChild(el('p','empty','Prix indisponibles ('+e.message+')'))})}
+
+/* ================= Agendas (iCal via le relais) ================= */
+function icsDate(v,params){var m=/^(\d{4})(\d\d)(\d\d)(?:T(\d\d)(\d\d)(\d\d)?(Z)?)?/.exec(v);if(!m)return null;
+  if(m[7])return new Date(Date.UTC(+m[1],m[2]-1,+m[3],+m[4],+m[5],+(m[6]||0)));
+  return new Date(+m[1],m[2]-1,+m[3],+(m[4]||0),+(m[5]||0),+(m[6]||0))}
+function unesc(s){return s.replace(/\\n/gi,' ').replace(/\\([,;\\])/g,'$1')}
+function parseICS(txt){var lines=txt.replace(/\r?\n[ \t]/g,'').split(/\r?\n/),evs=[],e=null;
+  lines.forEach(function(l){
+    if(l==='BEGIN:VEVENT'){e={};return}if(l==='END:VEVENT'){if(e&&e.start)evs.push(e);e=null;return}if(!e)return;
+    var i=l.indexOf(':');if(i<0)return;var parts=l.slice(0,i).split(';'),val=l.slice(i+1),name=parts[0].toUpperCase(),pr={};
+    parts.slice(1).forEach(function(p){var j=p.indexOf('=');pr[p.slice(0,j).toUpperCase()]=p.slice(j+1)});
+    if(name==='DTSTART'){e.start=icsDate(val,pr);e.allDay=pr.VALUE==='DATE'||/^\d{8}$/.test(val)}
+    else if(name==='DTEND')e.end=icsDate(val,pr);
+    else if(name==='SUMMARY')e.title=unesc(val);
+    else if(name==='LOCATION')e.loc=unesc(val);
+    else if(name==='RRULE')e.rrule=val;
+    else if(name==='EXDATE'){e.ex=e.ex||[];val.split(',').forEach(function(v){var d=icsDate(v,pr);if(d)e.ex.push(d.getTime())})}
+    else if(name==='RECURRENCE-ID'){var d=icsDate(val,pr);if(d)e.recId=d.getTime()}
+    else if(name==='UID')e.uid=val;
+    else if(name==='STATUS')e.status=val;
+  });return evs}
+function expand(evs,from,to){var out=[],ov={};evs.forEach(function(e){if(e.recId)ov[e.uid+'|'+e.recId]=1});
+  function add(e,s,dur){out.push({title:e.title||'(sans titre)',loc:e.loc,allDay:e.allDay,start:s,end:new Date(s.getTime()+dur)})}
+  evs.forEach(function(e){if(e.status==='CANCELLED')return;var dur=e.end?e.end-e.start:(e.allDay?864e5:0);
+    if(!e.rrule||e.recId){if(e.start<to&&e.start.getTime()+dur>from)add(e,e.start,dur);return}
+    var r={};e.rrule.split(';').forEach(function(kv){var p=kv.split('=');r[p[0]]=p[1]});
+    var iv=+(r.INTERVAL||1),count=r.COUNT?+r.COUNT:Infinity,until=r.UNTIL?icsDate(r.UNTIL,{}):null,n=0,cur=new Date(e.start),guard=0;
+    var days=(r.FREQ==='WEEKLY'&&r.BYDAY)?r.BYDAY.split(',').map(function(d){return['SU','MO','TU','WE','TH','FR','SA'].indexOf(d.slice(-2))}).sort():null;
+    while(guard++<3000){var cands;
+      if(days){var ws=new Date(cur);ws.setDate(ws.getDate()-ws.getDay());if(ws>=to)return;
+        cands=days.map(function(d){var x=new Date(ws);x.setDate(ws.getDate()+d);x.setHours(e.start.getHours(),e.start.getMinutes(),e.start.getSeconds(),0);return x}).filter(function(x){return x>=e.start})}
+      else{if(cur>=to)return;cands=[new Date(cur)]}
+      for(var k=0;k<cands.length;k++){var c=cands[k];if(until&&c>until)return;if(n>=count)return;n++;var t=c.getTime();
+        if(c<to&&t+dur>from&&!(e.ex&&e.ex.indexOf(t)>=0)&&!ov[e.uid+'|'+t])add(e,c,dur)}
+      if(r.FREQ==='DAILY')cur.setDate(cur.getDate()+iv);else if(r.FREQ==='WEEKLY')cur.setDate(cur.getDate()+7*iv);
+      else if(r.FREQ==='MONTHLY')cur.setMonth(cur.getMonth()+iv);else if(r.FREQ==='YEARLY')cur.setFullYear(cur.getFullYear()+iv);else return}
+  });return out.sort(function(a,b){return a.start-b.start})}
+var agenda=[[],[],[]],agendaErr=['','',''];
+function loadAgendas(){
+  cfg.people.forEach(function(p,i){
+    var links=(p.ics||'').split(/\s+/).filter(function(x){return /^(https|webcal):\/\//i.test(x)});
+    if(!links.length){agenda[i]=[];agendaErr[i]='';renderAgendas();return}
+    if(!relayOK()){agendaErr[i]='relais';renderAgendas();return}
+    var from=new Date();from.setHours(0,0,0,0);var to=new Date(from);to.setDate(to.getDate()+8);
+    Promise.all(links.map(function(u){return fetch(relayURL('/ics?url='+encodeURIComponent(u)),{headers:{'X-Token':cfg.token}}).then(function(r){if(!r.ok)throw new Error('HTTP '+r.status);return r.text()})}))
+    .then(function(txts){var all=[];txts.forEach(function(t){all=all.concat(parseICS(t))});agenda[i]=expand(all,from,to);agendaErr[i]='';lsSet('agenda'+i,agenda[i].map(function(e){return[e.title,e.loc,e.allDay,+e.start,+e.end]}));renderAgendas()})
+    .catch(function(e){agendaErr[i]=e.message;var c=lsGet('agenda'+i,[]);agenda[i]=c.map(function(a){return{title:a[0],loc:a[1],allDay:a[2],start:new Date(a[3]),end:new Date(a[4])}});renderAgendas()});
+  })}
+var hm=function(d){return pad(d.getHours())+':'+pad(d.getMinutes())};
+var dLong=new Intl.DateTimeFormat('fr-FR',{weekday:'long',day:'numeric',month:'short'});
+function evNode(e,color){var d=el('div','ev');d.style.setProperty('--c',color);d.appendChild(el('b',null,e.allDay?'Journée':hm(e.start)+' – '+hm(e.end)));
+  d.appendChild(el('span',null,e.title+(e.loc?' · '+e.loc:'')));return d}
+function agendaMsg(i){var p=cfg.people[i];if(agendaErr[i]==='relais')return'Agenda en attente du relais (voir Réglages).';
+  if(agendaErr[i])return'Agenda injoignable ('+agendaErr[i]+'), dernière version affichée.';
+  if(!p.ics)return'Aucun agenda relié. Ajoute un lien iCal dans Réglages.';return''}
+function renderAgendas(){
+  var now=new Date(),t0=new Date(now);t0.setHours(0,0,0,0);var t1=new Date(t0);t1.setDate(t1.getDate()+1);
+  var tc=clear($('todayCols'));
+  cfg.people.forEach(function(p,i){var col=el('div');var h=el('h3');var dot=el('span','dot');dot.style.background=COLORS[i];h.appendChild(dot);h.appendChild(document.createTextNode(p.name));col.appendChild(h);
+    var evs=agenda[i].filter(function(e){return e.end>now&&e.start<t1});
+    if(evs.length)evs.slice(0,5).forEach(function(e){col.appendChild(evNode(e,COLORS[i]))});
+    else col.appendChild(el('p','empty',agendaMsg(i)||'Rien de prévu.'));
+    if(evs.length>5)col.appendChild(el('p','small muted','+ '+(evs.length-5)+' autres'));
+    tc.appendChild(col)});
+  var g=clear($('agendaGrid'));
+  cfg.people.forEach(function(p,i){var pn=el('div','panel agenda-col');var lb=el('div','label');var nm=el('span');var dot=el('span','dot');dot.style.background=COLORS[i];dot.style.display='inline-block';dot.style.marginRight='8px';nm.appendChild(dot);nm.appendChild(document.createTextNode(p.name));lb.appendChild(nm);lb.appendChild(el('small',null,'7 prochains jours'));pn.appendChild(lb);
+    var msg=agendaMsg(i);if(msg)pn.appendChild(el('p','empty',msg));
+    for(var d=0;d<7;d++){var a=new Date(t0);a.setDate(a.getDate()+d);var b=new Date(a);b.setDate(b.getDate()+1);
+      var evs=agenda[i].filter(function(e){return e.start<b&&e.end>a});
+      pn.appendChild(el('div','day-h'+(d===0?' today':''),d===0?"Aujourd'hui":(d===1?'Demain':dLong.format(a))));
+      if(evs.length)evs.forEach(function(e){pn.appendChild(evNode(e,COLORS[i]))});else pn.appendChild(el('p','empty','—'))}
+    g.appendChild(pn)});
 }
-function fuel(){
-  var ul=$('stations');
-  if(cfg.lat==null){ul.textContent='';ul.appendChild(el('li','empty','Choisis ta ville dans les réglages ⚙︎'));return}
-  var f=cfg.fuel,w="within_distance(geom, geom'POINT("+cfg.lon+' '+cfg.lat+")', 5km) and "+f+'_prix is not null';
-  getJSON('https://data.economie.gouv.fr/api/explore/v2.1/catalog/datasets/prix-des-carburants-en-france-flux-instantane-v2/records?limit=6&select=adresse,ville,'+f+'_prix,'+f+'_maj&order_by='+f+'_prix&where='+encodeURIComponent(w))
-  .then(function(j){
-    ul.textContent='';
-    if(!j.results.length){ul.appendChild(el('li','empty','Aucune station à moins de 5 km pour ce carburant.'));return}
-    j.results.forEach(function(s){
-      var li=el('li');li.appendChild(el('span','st-name',s.adresse||'Station'));
-      var p=el('span','st-price',s[f+'_prix'].toFixed(3));p.appendChild(el('small',null,' €/L'));li.appendChild(p);
-      var maj=s[f+'_maj']?new Date(s[f+'_maj']):null;
-      li.appendChild(el('span','st-sub',(s.ville||'')+(maj?' · maj '+maj.toLocaleDateString('fr-FR',{day:'numeric',month:'short'}):'')));
-      ul.appendChild(li);
-    });
-    $('fuelStatus').textContent='à '+new Date().toLocaleTimeString('fr-FR',{hour:'2-digit',minute:'2-digit'});
-  }).catch(function(e){ul.textContent='';ul.appendChild(el('li','empty err','Prix indisponibles ('+e.message+')'))});
+
+/* ================= Frigo & recettes ================= */
+function fridgeHas(id){return state.fridge.some(function(x){return x.food===id})}
+function renderFridge(){
+  var box=clear($('fridgeList'));$('fridgeCount').textContent=state.fridge.length?state.fridge.length+' articles':'';
+  if(!state.fridge.length){box.appendChild(el('p','empty','Le frigo est vide sur le tableau. Ajoute ce que vous avez (frigo et placards) pour voir les recettes possibles.'));}
+  var cats={};state.fridge.forEach(function(x){var c=x.food&&FOOD[x.food]?FOOD[x.food].cat:'Autres';(cats[c]=cats[c]||[]).push(x)});
+  ['Frais','Viande & poisson','Fruits & légumes','Épicerie','Autres'].forEach(function(c){if(!cats[c])return;box.appendChild(el('div','cat-h',c));
+    var ul=el('ul','list');cats[c].forEach(function(x){var li=el('li');li.appendChild(el('span','grow ell',x.name));if(x.qty)li.appendChild(el('span','price',x.qty));
+      var del=el('button','x','×');del.type='button';del.setAttribute('aria-label','Retirer '+x.name);del.onclick=function(){state.fridge=state.fridge.filter(function(y){return y.id!==x.id});persist()};li.appendChild(del);ul.appendChild(li)});box.appendChild(ul)});
 }
-
-/* ---------- Tâches (gardées sur l'iPad) ---------- */
-var todos=load('todos',[]);
-function renderTodos(){
-  var ul=$('todos');ul.textContent='';
-  if(!todos.length)ul.appendChild(el('li','empty','Rien à faire. Ajoute une tâche ou un article de courses.'));
-  todos.forEach(function(t,i){
-    var li=el('li',t.done?'done':'');
-    var b=el('button','box',t.done?'✓':'');b.type='button';b.setAttribute('aria-label',t.done?'Décocher':'Cocher');
-    b.onclick=function(){t.done=!t.done;save('todos',todos);renderTodos()};
-    var x=el('button','del','×');x.type='button';x.setAttribute('aria-label','Supprimer');
-    x.onclick=function(){todos.splice(i,1);save('todos',todos);renderTodos()};
-    li.appendChild(b);li.appendChild(el('span',null,t.text));li.appendChild(x);ul.appendChild(li);
-  });
-  var left=todos.filter(function(t){return !t.done}).length;
-  $('todoCount').textContent=todos.length?left+' restant'+(left>1?'s':''):'';
+$('fridgeForm').onsubmit=function(e){e.preventDefault();var v=$('fridgeIn').value.trim();if(!v)return;var f=findFood(v);
+  state.fridge.push({id:uid(),name:f&&norm(f.n)===norm(v)?f.n:v,food:f?f.id:null,qty:$('fridgeQty').value.trim()});$('fridgeIn').value='';$('fridgeQty').value='';persist()};
+var rFilter='ok';
+function recipeStatus(r){var miss=r.ing.filter(function(it){return !STAPLES[it[0]]&&!fridgeHas(it[0])}).map(function(it){return it[0]});return miss}
+function renderRecipes(){
+  var fb=clear($('recipeFilter'));[['ok','Faisables maintenant'],['near','Il manque 1–2 choses'],['all','Toutes'],['prot','Les plus protéinées']].forEach(function(o){var b=el('button','chip',o[1]);b.type='button';b.setAttribute('aria-pressed',rFilter===o[0]);b.onclick=function(){rFilter=o[0];renderRecipes()};fb.appendChild(b)});
+  var list=RECIPES.map(function(r){return{r:r,miss:recipeStatus(r)}});
+  if(rFilter==='ok')list=list.filter(function(x){return !x.miss.length});
+  else if(rFilter==='near')list=list.filter(function(x){return x.miss.length>0&&x.miss.length<=2});
+  list.sort(function(a,b){return rFilter==='prot'?b.r.m.p-a.r.m.p:(a.miss.length-b.miss.length)||(b.r.m.p-a.r.m.p)});
+  var box=clear($('recipeList'));
+  if(!list.length)box.appendChild(el('p','empty',rFilter==='ok'?'Rien de complet avec ce qu\'il y a. Regarde « Il manque 1–2 choses ».':'Aucune recette.'));
+  list.forEach(function(x){var b=el('button','rc');b.type='button';b.appendChild(el('h4',null,x.r.n));
+    b.appendChild(el('span','pill '+(x.miss.length?(x.miss.length<=2?'mid':'no'):'ok'),x.miss.length?'Manque : '+x.miss.map(function(i){return FOOD[i].n.toLowerCase()}).join(', '):'Tout est là'));
+    b.appendChild(el('span','mac',r0(x.r.m.p)+' g protéines · '+r0(x.r.m.kcal)+' kcal'));b.onclick=function(){openRecipe(x.r)};box.appendChild(b)});
 }
-$('addForm').onsubmit=function(e){e.preventDefault();var v=$('newTodo').value.trim();if(!v)return;todos.unshift({text:v,done:false});save('todos',todos);$('newTodo').value='';$('newTodo').blur();renderTodos()};
-$('clearDone').onclick=function(){todos=todos.filter(function(t){return !t.done});save('todos',todos);renderTodos()};
+function openRecipe(r){var s=clear($('recipeSheet')),miss=recipeStatus(r);
+  s.appendChild(el('h2',null,r.n));
+  s.appendChild(el('p','small muted',r0(r.m.p)+' g protéines · '+r0(r.m.kcal)+' kcal · '+r0(r.m.c)+' g glucides · '+r0(r.m.f)+' g lipides (1 portion)'));
+  var ul=el('ul','list');r.ing.forEach(function(it){var f=FOOD[it[0]],li=el('li');var has=STAPLES[it[0]]||fridgeHas(it[0]);
+    li.appendChild(el('span','pill '+(has?'ok':'no'),has?'✓':'manque'));li.appendChild(el('span','grow',f.n));li.appendChild(el('span','price',it[1]+' g'));ul.appendChild(li)});s.appendChild(ul);
+  var ol=el('ol');r.steps.forEach(function(t){ol.appendChild(el('li',null,t))});s.appendChild(ol);
+  var row=el('div','row');row.style.justifyContent='flex-end';
+  var c=el('button','btn ghost','Fermer');c.type='button';c.onclick=function(){$('recipeModal').hidden=true};row.appendChild(c);
+  if(miss.length){var a=el('button','btn ghost','Ajouter ce qui manque aux courses');a.type='button';a.onclick=function(){miss.forEach(function(id){addShop(FOOD[id].n,FOOD[id].price,id,true)});persist();toast(miss.length+' article(s) ajouté(s) aux courses');$('recipeModal').hidden=true};row.appendChild(a)}
+  var who=cfg.people[cfg.nutriPerson||0].name;
+  var e=el('button','btn','J\'en mange une portion ('+who+')');e.type='button';e.onclick=function(){logFood(r.n,r.m);toast('Ajouté aux apports de '+who);$('recipeModal').hidden=true};row.appendChild(e);
+  s.appendChild(row);$('recipeModal').hidden=false}
 
-/* ---------- Agenda (intégration Google Agenda) ---------- */
-function calendar(){
-  var b=$('calBody');b.textContent='';
-  if(!cfg.cal){var p=el('p','hint');p.innerHTML='Ajoute ton <b>adresse Google Agenda</b> dans les réglages ⚙︎ pour afficher tes rendez-vous ici.';b.appendChild(p);return}
-  var f=document.createElement('iframe');
-  f.src='https://calendar.google.com/calendar/embed?mode=AGENDA&showTitle=0&showPrint=0&showTabs=0&showCalendars=0&showTz=0&hl=fr&ctz='+encodeURIComponent(Intl.DateTimeFormat().resolvedOptions().timeZone||'Europe/Paris')+'&src='+encodeURIComponent(cfg.cal);
-  f.title='Agenda';b.appendChild(f);
+/* ================= Courses & budget ================= */
+function periodStart(){var d=new Date();d.setHours(0,0,0,0);if(state.budget.period==='month')d.setDate(1);else d.setDate(d.getDate()-((d.getDay()+6)%7));return d.getTime()}
+function addShop(name,price,food,silent){if(state.shop.some(function(x){return !x.done&&norm(x.name)===norm(name)}))return;state.shop.push({id:uid(),name:name,price:price||0,food:food||null,done:false});if(!silent)persist()}
+function spentNow(){var s=periodStart();return state.spent.filter(function(x){return x.t>=s}).reduce(function(a,x){return a+x.amt},0)}
+function renderShop(){
+  var ul=clear($('shopList')),todo=state.shop.filter(function(x){return !x.done}),done=state.shop.filter(function(x){return x.done});
+  $('shopCount').textContent=todo.length?todo.length+' à acheter':'';
+  if(!state.shop.length)ul.appendChild(el('li','empty','Liste vide. Ajoute un article ou touche une suggestion.'));
+  todo.concat(done).forEach(function(x){var li=el('li',x.done?'done':'');var b=el('button','box',x.done?'✓':'');b.type='button';b.setAttribute('aria-label',x.done?'Remettre dans la liste':'Marquer comme acheté');
+    b.onclick=function(){x.done=!x.done;if(x.done)state.spent.push({id:x.id,t:Date.now(),amt:x.price||0,label:x.name});else state.spent=state.spent.filter(function(s){return s.id!==x.id});persist()};
+    li.appendChild(b);li.appendChild(el('span','grow ell',x.name));li.appendChild(el('span','price',x.price?'≈ '+eur(x.price):''));
+    var del=el('button','x','×');del.type='button';del.setAttribute('aria-label','Supprimer '+x.name);del.onclick=function(){state.shop=state.shop.filter(function(y){return y.id!==x.id});persist()};li.appendChild(del);ul.appendChild(li)});
+  // budget
+  var B=state.budget.amount||0,sp=spentNow(),planned=todo.reduce(function(a,x){return a+(x.price||0)},0);
+  if(document.activeElement!==$('budgetAmt'))$('budgetAmt').value=B?String(B).replace('.',','):'';$('budgetPeriod').value=state.budget.period;
+  var bb=clear($('budgetBig'));[['Dépensé',sp],['Liste en cours',planned],['Reste',B-sp-planned]].forEach(function(a,i){var d=el('div');d.appendChild(el('span','small muted',a[0]));var n=el('span','num',B||i<2?eur(a[1]):'—');if(i===2&&B&&a[1]<0)n.style.color='var(--bad)';d.appendChild(n);bb.appendChild(d)});
+  var pct=B?Math.min(100,(sp+planned)/B*100):0;$('budgetBar').className='bar'+(B&&sp+planned>B?' over':'');$('budgetBar').firstChild.style.width=pct+'%';
+  $('budgetNote').textContent=B?('Budget '+eur(B)+(state.budget.period==='month'?' par mois':' par semaine')+'. Prix estimés (≈), à corriger en touchant le prix lors de l\'ajout.'):'Maman : saisis un budget pour suivre les dépenses.';
+  var sug=clear($('shopSuggest'));FOODS.filter(function(f){return f.basic&&!fridgeHas(f.id)&&!state.shop.some(function(x){return !x.done&&x.food===f.id})}).forEach(function(f){var b=el('button','chip add','+ '+f.n+' ≈ '+eur(f.price));b.type='button';b.title=f.pu;b.onclick=function(){addShop(f.n,f.price,f.id)};sug.appendChild(b)});
+  if(!sug.firstChild)sug.appendChild(el('p','empty','Tous les basiques sont là.'));
+  var sl=clear($('spentList')),s0=periodStart();state.spent.filter(function(x){return x.t>=s0}).slice(-8).reverse().forEach(function(x){var li=el('li');li.appendChild(el('span','grow ell',x.label));li.appendChild(el('span','price',eur(x.amt)));sl.appendChild(li)});
+  if(!sl.firstChild)sl.appendChild(el('li','empty','Aucun achat coché sur la période.'));
+  // accueil
+  var hb=clear($('homeBudget'));$('homeBudgetPeriod').textContent=state.budget.period==='month'?'ce mois-ci':'cette semaine';
+  var big=el('div','big-p');big.textContent=todo.length+' ';big.appendChild(el('small',null,'article'+(todo.length>1?'s':'')+' à acheter'));hb.appendChild(big);
+  if(B){var bar=el('div','bar'+(sp+planned>B?' over':''));var i=el('i');i.style.width=pct+'%';bar.appendChild(i);hb.appendChild(bar);hb.appendChild(el('p','small muted',eur(sp)+' dépensés · reste '+eur(B-sp-planned)+' sur '+eur(B)))}
+  else hb.appendChild(el('p','small muted','Pas encore de budget défini.'));
 }
+$('shopForm').onsubmit=function(e){e.preventDefault();var v=$('shopIn').value.trim();if(!v)return;var f=findFood(v);var p=parseFloat($('shopPrice').value.replace(',','.'));
+  addShop(f&&norm(f.n)===norm(v)?f.n:v,isNaN(p)?(f?f.price:0):p,f?f.id:null);$('shopIn').value='';$('shopPrice').value=''};
+$('shopIn').addEventListener('change',function(){var f=findFood(this.value);if(f&&!$('shopPrice').value)$('shopPrice').placeholder='≈ '+String(f.price).replace('.',',')+' €'});
+$('budgetSave').onclick=function(){var v=parseFloat($('budgetAmt').value.replace(',','.'));state.budget={amount:isNaN(v)?0:v,period:$('budgetPeriod').value};$('budgetAmt').blur();persist();toast('Budget enregistré')};
+$('shopToFridge').onclick=function(){var moved=0;state.shop=state.shop.filter(function(x){if(!x.done)return true;if(!state.fridge.some(function(y){return norm(y.name)===norm(x.name)})){state.fridge.push({id:uid(),name:x.name,food:x.food,qty:''});moved++}return false});persist();toast(moved?moved+' article(s) rangé(s) dans le frigo':'Rien à ranger')};
 
-/* ---------- Réglages ---------- */
-var sFuel=$('sFuel');FUELS.forEach(function(f){var o=el('option',null,f[1]);o.value=f[0];sFuel.appendChild(o)});
-$('gear').onclick=function(){$('sCity').value=cfg.city;sFuel.value=cfg.fuel;$('sCal').value=cfg.cal;
-  if($('settings').showModal)$('settings').showModal();else $('settings').setAttribute('open','')};
-$('sCancel').onclick=function(){if($('settings').close)$('settings').close();else $('settings').removeAttribute('open')};
-$('setForm').addEventListener('submit',function(e){
-  var city=$('sCity').value.trim(),changed=city!==cfg.city;
-  cfg.city=city;cfg.fuel=sFuel.value;cfg.cal=$('sCal').value.trim();save('cfg',cfg);
-  if(!$('settings').showModal){e.preventDefault();$('settings').removeAttribute('open')}
-  fuelTabs();calendar();
-  if(changed&&city){geocode(city).then(refresh).catch(function(err){$('wxDesc').textContent=err.message})}else refresh();
-});
+/* ================= Nutrition ================= */
+function todayLog(){var k=dayKey();state.nut.log[k]=state.nut.log[k]||[];return state.nut.log[k]}
+function logFood(name,m){todayLog().push({id:uid(),n:name,kcal:r0(m.kcal),p:Math.round(m.p*10)/10,c:r0(m.c),f:r0(m.f)});
+  var keys=Object.keys(state.nut.log).sort();while(keys.length>30)delete state.nut.log[keys.shift()];persist()}
+function sumLog(l){return l.reduce(function(a,x){a.kcal+=x.kcal;a.p+=x.p;a.c+=x.c;a.f+=x.f;return a},{kcal:0,p:0,c:0,f:0})}
+function macroRow(label,val,target,unit){var d=el('div','macro');d.appendChild(el('span','muted',label));var b=el('div','bar'+(val>target*1.1&&unit==='kcal'?' over':''));var i=el('i');i.style.width=Math.min(100,target?val/target*100:0)+'%';b.appendChild(i);d.appendChild(b);d.appendChild(el('span','num',r0(val)+' / '+target+' '+unit));return d}
+function renderNutri(){
+  var T=state.nut.targets,l=todayLog(),s=sumLog(l),who=cfg.people[cfg.nutriPerson||0].name;
+  $('nutriTitle').textContent='Apports du jour · '+who;$('nutriWho').textContent='Nutrition · '+who;
+  var bars=clear($('nutriBars'));[['Protéines',s.p,T.p,'g'],['Calories',s.kcal,T.kcal,'kcal'],['Glucides',s.c,T.c,'g'],['Lipides',s.f,T.f,'g']].forEach(function(a){bars.appendChild(macroRow(a[0],a[1],a[2],a[3]))});
+  var hp=$('homeProt');hp.textContent=r0(s.p)+' ';hp.appendChild(el('small',null,'/ '+T.p+' g protéines'));
+  var hm2=clear($('homeMacros'));hm2.appendChild(macroRow('Protéines',s.p,T.p,'g'));hm2.appendChild(macroRow('Calories',s.kcal,T.kcal,'kcal'));
+  var left=T.p-s.p;hm2.appendChild(el('p','small muted',left>0?'Encore '+r0(left)+' g de protéines à prendre aujourd\'hui.':'Objectif protéines atteint ✓'));
+  var ul=clear($('nutriLog'));if(!l.length)ul.appendChild(el('li','empty','Rien de noté aujourd\'hui. Ajoute un aliment, un raccourci ou une recette.'));
+  l.slice().reverse().forEach(function(x){var li=el('li');li.appendChild(el('span','grow ell',x.n));li.appendChild(el('span','price',x.p+' g P · '+x.kcal+' kcal'));
+    var del=el('button','x','×');del.type='button';del.setAttribute('aria-label','Retirer '+x.n);del.onclick=function(){var k=dayKey();state.nut.log[k]=state.nut.log[k].filter(function(y){return y.id!==x.id});persist()};li.appendChild(del);ul.appendChild(li)});
+  // 7 jours
+  var w=clear($('week')),vals=[],max=T.p*1.25;
+  for(var i=6;i>=0;i--){var d=new Date();d.setDate(d.getDate()-i);var v=sumLog(state.nut.log[dayKey(d)]||[]).p;vals.push([d,v]);if(v>max)max=v}
+  var goal=el('div','goal');goal.style.bottom=(T.p/max*100+18)+'px';w.appendChild(goal);
+  vals.forEach(function(a){var c=el('div','col'+(a[1]>=T.p?' hit':''));c.appendChild(el('span','num small',a[1]?r0(a[1]):''));var b=el('i');b.style.height=Math.max(2,a[1]/max*100)+'px';c.appendChild(b);c.appendChild(el('span',null,dayShort.format(a[0])));w.appendChild(c)});
+}
+var QUICK=[['Shaker whey',[['whey',30]]],['Shaker whey + lait',[['whey',30],['lait',300]]],['3 œufs',[['oeufs',180]]],['Skyr 150 g',[['skyr',150]]],['Blanc de poulet 150 g',[['poulet',150]]],['Thon (1 boîte)',[['thon',100]]],['Banane',[['banane',120]]]];
+QUICK.forEach(function(q){var b=el('button','chip add','+ '+q[0]);b.type='button';b.onclick=function(){logFood(q[0],macros(q[1]));toast(q[0]+' ajouté')};$('quickFoods').appendChild(b)});
+$('nutriForm').onsubmit=function(e){e.preventDefault();var f=findFood($('nutriFood').value);if(!f){toast('Aliment inconnu. Choisis-le dans la liste proposée.');return}
+  var g=parseFloat($('nutriGrams').value.replace(',','.'));if(isNaN(g))g=f.portion;logFood(f.n+' '+g+' g',macros([[f.id,g]]));$('nutriFood').value='';$('nutriGrams').value=''};
+$('nutriFood').addEventListener('change',function(){var f=findFood(this.value);if(f)$('nutriGrams').placeholder=f.portion+' g'});
+$('targetsBtn').onclick=function(){var T=state.nut.targets;$('tP').value=T.p;$('tK').value=T.kcal;$('tC').value=T.c;$('tF').value=T.f;$('targetsModal').hidden=false};
+$('tSave').onclick=function(){function n(id,d){var v=parseInt($(id).value,10);return isNaN(v)?d:v}var T=state.nut.targets;state.nut.targets={p:n('tP',T.p),kcal:n('tK',T.kcal),c:n('tC',T.c),f:n('tF',T.f)};$('targetsModal').hidden=true;persist()};
 
-function refresh(){weather();fuel()}
+/* ================= Réglages ================= */
+$('gearBtn').onclick=function(){$('sAddr').value=cfg.addr||'';$('sRelay').value=cfg.relay||'';$('sToken').value=cfg.token||'';
+  var box=clear($('sPeople'));cfg.people.forEach(function(p,i){var w=el('div');w.style.cssText='display:flex;flex-direction:column;gap:6px;border:1px solid var(--line);border-radius:10px;padding:10px';
+    var n=el('input');n.id='sName'+i;n.value=p.name;n.setAttribute('aria-label','Prénom '+(i+1));
+    var t=el('textarea');t.id='sIcs'+i;t.value=p.ics||'';t.placeholder='Lien(s) iCal, un par ligne';t.setAttribute('aria-label','Liens agenda de '+p.name);t.setAttribute('autocapitalize','off');
+    var r=el('label','small');var cb=el('input');cb.type='radio';cb.name='nutriP';cb.value=i;cb.checked=(cfg.nutriPerson||0)===i;cb.style.width='auto';r.appendChild(cb);r.appendChild(document.createTextNode(' Suivi nutrition pour cette personne'));
+    w.appendChild(n);w.appendChild(t);w.appendChild(r);box.appendChild(w)});
+  $('setModal').hidden=false};
+$('sSave').onclick=function(){
+  cfg.people.forEach(function(p,i){p.name=$('sName'+i).value.trim()||p.name;p.ics=$('sIcs'+i).value.trim()});
+  var np=document.querySelector('input[name="nutriP"]:checked');cfg.nutriPerson=np?+np.value:0;
+  cfg.relay=$('sRelay').value.trim();cfg.token=$('sToken').value.trim();
+  var addr=$('sAddr').value.trim(),changed=addr!==cfg.addr;cfg.addr=addr;saveCfg();$('setModal').hidden=true;
+  var after=function(){refreshAll();pull()};
+  if(changed&&addr)geocode(addr).then(after).catch(function(e){toast(e.message);after()});else after()};
+function geocode(a){return getJSON('https://api-adresse.data.gouv.fr/search/?limit=1&q='+encodeURIComponent(a)).then(function(g){
+  if(!g.features||!g.features.length)throw new Error('Adresse introuvable');var f=g.features[0];cfg.lon=f.geometry.coordinates[0];cfg.lat=f.geometry.coordinates[1];cfg.place=f.properties.city||f.properties.label;saveCfg()})}
 
-/* ---------- Écran toujours allumé + rafraîchissements ---------- */
-var lock=null;
-function keepAwake(){if(navigator.wakeLock&&document.visibilityState==='visible'){navigator.wakeLock.request('screen').then(function(l){lock=l}).catch(function(){})}}
-document.addEventListener('visibilitychange',function(){if(document.visibilityState==='visible'){keepAwake();refresh()}});
-document.addEventListener('click',function(){if(!lock)keepAwake()},{once:true});
-keepAwake();
-
-fuelTabs();renderTodos();calendar();
-if(cfg.city&&cfg.lat==null)geocode(cfg.city).then(refresh);else refresh();
-setInterval(weather,15*60*1000);   // météo : toutes les 15 min
-setInterval(fuel,60*60*1000);      // carburant : toutes les heures
-setInterval(function(){if(new Date().getHours()===4&&new Date().getMinutes()===0)location.reload()},60*1000); // recharge chaque nuit
+/* ================= Rendu & rafraîchissements ================= */
+function renderAll(){renderFridge();renderRecipes();renderShop();renderNutri();renderAgendas()}
+function refreshAll(){weather();fuelHome();fuelTabs();if(current==='fuel')fuelList();loadAgendas()}
+var lock=null;function keepAwake(){if(navigator.wakeLock&&document.visibilityState==='visible')navigator.wakeLock.request('screen').then(function(l){lock=l;l.addEventListener('release',function(){lock=null})}).catch(function(){})}
+document.addEventListener('visibilitychange',function(){if(document.visibilityState==='visible'){keepAwake();refreshAll();pull()}});
+document.addEventListener('click',function(){if(!lock)keepAwake()});
+renderAll();refreshAll();pull();keepAwake();
+if(cfg.addr&&cfg.place==='Bayonne'&&cfg.lat===43.4929)geocode(cfg.addr).then(refreshAll).catch(function(){});
+var lastDay=dayKey();
+setInterval(weather,15*60*1000);setInterval(function(){fuelHome();if(current==='fuel')fuelList()},60*60*1000);
+setInterval(loadAgendas,15*60*1000);setInterval(pull,60*1000);
+setInterval(function(){var k=dayKey();if(k!==lastDay){lastDay=k;renderAll()}if(new Date().getHours()===4&&new Date().getMinutes()===0)location.reload()},60*1000);
 })();
 </script>
 </body>
