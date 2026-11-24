@@ -1,0 +1,299 @@
+<!doctype html>
+<html lang="fr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="Maison">
+<meta name="theme-color" content="#101418">
+<title>Tableau Maison</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&family=Space+Grotesk:wght@400;500;700&display=swap">
+<style>
+/* Écran mural paysage : grille 3 colonnes (temps / carburant / tâches) + bandeau agenda en bas */
+:root{
+  --bg:#101418; --panel:#181e24; --line:#26303a; --fg:#e8edf2; --muted:#8a97a5;
+  --accent:#f2b544; --good:#5cc48a; --bad:#e8766a;
+  --display:"Space Grotesk",system-ui,-apple-system,sans-serif;
+  --body:"Inter",system-ui,-apple-system,sans-serif;
+  color-scheme:dark;
+}
+*{box-sizing:border-box}
+html,body{height:100%;margin:0}
+body{background:var(--bg);color:var(--fg);font-family:var(--body);font-size:16px;
+  padding:max(14px,env(safe-area-inset-top)) max(16px,env(safe-area-inset-right)) max(14px,env(safe-area-inset-bottom)) max(16px,env(safe-area-inset-left));
+  -webkit-user-select:none;user-select:none;-webkit-tap-highlight-color:transparent;overflow:hidden}
+.grid{height:100%;display:grid;gap:14px;
+  grid-template-columns:1.25fr 1fr 1fr;grid-template-rows:auto 1fr;
+  grid-template-areas:"time fuel todo" "cal cal todo"}
+.panel{background:var(--panel);border:1px solid var(--line);border-radius:14px;padding:18px 20px;min-width:0;min-height:0;display:flex;flex-direction:column;gap:12px}
+.label{font-size:12px;letter-spacing:.12em;text-transform:uppercase;color:var(--muted);display:flex;justify-content:space-between;align-items:center;gap:8px}
+.label small{letter-spacing:0;text-transform:none;font-size:12px}
+h1,.num{font-family:var(--display);font-variant-numeric:tabular-nums}
+/* Heure + météo */
+#time{grid-area:time}
+.clock{font-family:var(--display);font-size:clamp(56px,9vw,104px);font-weight:500;line-height:.95;letter-spacing:-.02em;font-variant-numeric:tabular-nums}
+.clock .sec{font-size:.35em;color:var(--muted);margin-left:6px}
+.date{font-size:20px;color:var(--muted);text-transform:capitalize}
+.wx-now{display:flex;align-items:center;gap:14px;margin-top:4px}
+.wx-ico{font-size:44px;line-height:1}
+.wx-temp{font-family:var(--display);font-size:44px;font-weight:500}
+.wx-desc{color:var(--muted);font-size:15px}
+.wx-days{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;border-top:1px solid var(--line);padding-top:12px}
+.wx-day{display:flex;flex-direction:column;align-items:center;gap:2px;font-size:14px}
+.wx-day b{font-weight:500;color:var(--muted);text-transform:capitalize}
+.wx-day span:first-of-type{font-size:24px}
+.wx-day .mm{font-variant-numeric:tabular-nums}
+.wx-day .mm i{font-style:normal;color:var(--muted)}
+/* Carburant */
+#fuel{grid-area:fuel}
+.fuel-tabs{display:flex;gap:6px;flex-wrap:wrap}
+.chip{border:1px solid var(--line);background:transparent;color:var(--muted);border-radius:999px;padding:6px 12px;font:500 14px var(--body)}
+.chip[aria-pressed="true"]{background:var(--accent);border-color:var(--accent);color:#1a1405}
+.stations{list-style:none;margin:0;padding:0;display:flex;flex-direction:column;overflow:auto}
+.stations li{display:grid;grid-template-columns:1fr auto;gap:2px 12px;padding:9px 0;border-bottom:1px solid var(--line)}
+.stations li:last-child{border-bottom:0}
+.st-name{font-weight:500;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.st-sub{font-size:13px;color:var(--muted);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.st-price{grid-row:span 2;align-self:center;font-family:var(--display);font-size:24px;font-weight:500;font-variant-numeric:tabular-nums}
+.st-price small{font-size:13px;color:var(--muted);font-family:var(--body)}
+.stations li:first-child .st-price{color:var(--good)}
+/* Tâches */
+#todo{grid-area:todo}
+.add{display:flex;gap:8px}
+.add input{flex:1;min-width:0;background:var(--bg);border:1px solid var(--line);border-radius:10px;color:var(--fg);padding:12px;font:16px var(--body);-webkit-user-select:text;user-select:text}
+.btn{background:var(--accent);color:#1a1405;border:0;border-radius:10px;padding:0 16px;font:600 16px var(--body)}
+.btn.ghost{background:transparent;border:1px solid var(--line);color:var(--fg)}
+.todos{list-style:none;margin:0;padding:0;overflow:auto;flex:1}
+.todos li{display:flex;align-items:center;gap:12px;padding:11px 2px;border-bottom:1px solid var(--line);font-size:17px}
+.todos li.done span{color:var(--muted);text-decoration:line-through}
+.box{flex:none;width:26px;height:26px;border-radius:8px;border:2px solid var(--muted);background:transparent;display:grid;place-items:center;color:#1a1405;font-weight:700}
+.todos li.done .box{background:var(--good);border-color:var(--good)}
+.todos li span{flex:1;min-width:0;overflow-wrap:anywhere}
+.del{background:none;border:0;color:var(--muted);font-size:22px;padding:0 6px}
+.empty{color:var(--muted);font-size:15px;padding:8px 0}
+/* Agenda */
+#cal{grid-area:cal;padding:14px}
+#cal iframe{flex:1;width:100%;border:0;border-radius:10px;background:#fff}
+.hint{color:var(--muted);font-size:15px;line-height:1.5;margin:0}
+.hint b{color:var(--fg)}
+.status{font-size:13px;color:var(--muted)}
+.err{color:var(--bad)}
+/* Réglages */
+.gear{position:fixed;right:max(10px,env(safe-area-inset-right));bottom:max(8px,env(safe-area-inset-bottom));background:var(--panel);border:1px solid var(--line);color:var(--muted);border-radius:999px;width:40px;height:40px;font-size:20px;opacity:.6}
+dialog{background:var(--panel);color:var(--fg);border:1px solid var(--line);border-radius:16px;padding:22px;width:min(520px,92vw)}
+dialog::backdrop{background:rgba(0,0,0,.6)}
+dialog h2{font-family:var(--display);margin:0 0 14px;font-weight:500}
+dialog label{display:block;font-size:14px;color:var(--muted);margin:12px 0 6px}
+dialog input,dialog select{width:100%;background:var(--bg);border:1px solid var(--line);border-radius:10px;color:var(--fg);padding:11px;font:16px var(--body);-webkit-user-select:text;user-select:text}
+dialog .row{display:flex;gap:10px;justify-content:flex-end;margin-top:18px}
+dialog .btn{padding:12px 18px}
+button{cursor:pointer}
+button:focus-visible,input:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+/* Portrait ou petit écran : une colonne qui défile */
+@media (max-width:900px),(orientation:portrait){
+  body{overflow:auto}
+  .grid{height:auto;grid-template-columns:1fr 1fr;grid-template-rows:auto;grid-template-areas:"time time" "fuel todo" "cal cal"}
+  #cal{height:60vh}
+  .todos{max-height:40vh}
+}
+@media (max-width:600px){.grid{grid-template-columns:1fr;grid-template-areas:"time" "fuel" "todo" "cal"}}
+@media (prefers-reduced-motion:reduce){*{transition:none!important}}
+</style>
+</head>
+<body>
+<main class="grid">
+  <section class="panel" id="time" aria-label="Heure et météo">
+    <div class="clock" id="clock">--:--</div>
+    <div class="date" id="date"></div>
+    <div class="wx-now"><span class="wx-ico" id="wxIco"></span><span class="wx-temp" id="wxTemp">--°</span>
+      <div><div id="wxDesc" class="wx-desc">Chargement de la météo…</div><div id="wxPlace" class="status"></div></div></div>
+    <div class="wx-days" id="wxDays"></div>
+  </section>
+
+  <section class="panel" id="fuel" aria-label="Prix des carburants">
+    <div class="label">Carburant · 5 km <small id="fuelStatus"></small></div>
+    <div class="fuel-tabs" id="fuelTabs"></div>
+    <ul class="stations" id="stations"><li class="empty">Recherche des stations…</li></ul>
+  </section>
+
+  <section class="panel" id="todo" aria-label="Tâches et courses">
+    <div class="label">Tâches &amp; courses <small id="todoCount"></small></div>
+    <form class="add" id="addForm">
+      <input id="newTodo" placeholder="Ajouter (ex. lait, appeler le plombier)" autocomplete="off" enterkeyhint="done">
+      <button class="btn" type="submit" aria-label="Ajouter">+</button>
+    </form>
+    <ul class="todos" id="todos"></ul>
+    <button class="btn ghost" id="clearDone" type="button" style="padding:10px">Retirer les éléments cochés</button>
+  </section>
+
+  <section class="panel" id="cal" aria-label="Agenda">
+    <div class="label" style="padding:4px 6px 0">Agenda</div>
+    <div id="calBody" style="flex:1;display:flex;min-height:0"></div>
+  </section>
+</main>
+
+<button class="gear" id="gear" aria-label="Réglages">⚙︎</button>
+
+<dialog id="settings">
+  <form method="dialog" id="setForm">
+    <h2>Réglages</h2>
+    <label for="sCity">Ville (météo et stations)</label>
+    <input id="sCity" placeholder="ex. Bordeaux">
+    <label for="sFuel">Carburant affiché par défaut</label>
+    <select id="sFuel"></select>
+    <label for="sCal">Agenda Google : adresse e-mail ou ID du calendrier</label>
+    <input id="sCal" placeholder="prenom.nom@gmail.com" autocapitalize="off" autocorrect="off">
+    <p class="hint" style="margin-top:10px">L'agenda s'affiche si ce compte Google est connecté dans Safari sur l'iPad.</p>
+    <div class="row">
+      <button class="btn ghost" type="button" id="sCancel">Annuler</button>
+      <button class="btn" value="ok" type="submit" id="sSave">Enregistrer</button>
+    </div>
+  </form>
+</dialog>
+
+<script>
+(function(){
+'use strict';
+var $=function(id){return document.getElementById(id)};
+function load(k,d){try{var v=localStorage.getItem('maison.'+k);return v===null?d:JSON.parse(v)}catch(e){return d}}
+function save(k,v){try{localStorage.setItem('maison.'+k,JSON.stringify(v))}catch(e){}}
+function el(tag,cls,txt){var e=document.createElement(tag);if(cls)e.className=cls;if(txt!=null)e.textContent=txt;return e}
+
+var cfg=load('cfg',{city:'',lat:null,lon:null,place:'',fuel:'gazole',cal:''});
+
+/* ---------- Horloge ---------- */
+var dFmt=new Intl.DateTimeFormat('fr-FR',{weekday:'long',day:'numeric',month:'long'});
+function tick(){
+  var n=new Date(),h=('0'+n.getHours()).slice(-2),m=('0'+n.getMinutes()).slice(-2),s=('0'+n.getSeconds()).slice(-2);
+  var c=$('clock');c.textContent=h+':'+m;var sp=el('span','sec',s);c.appendChild(sp);
+  $('date').textContent=dFmt.format(n);
+}
+tick();setInterval(tick,1000);
+
+/* ---------- Météo (Open-Meteo, sans clé) ---------- */
+var WX={0:['☀️','Ciel dégagé'],1:['🌤️','Plutôt ensoleillé'],2:['⛅','Partiellement nuageux'],3:['☁️','Couvert'],45:['🌫️','Brouillard'],48:['🌫️','Brouillard givrant'],
+51:['🌦️','Bruine légère'],53:['🌦️','Bruine'],55:['🌧️','Bruine forte'],56:['🌧️','Bruine verglaçante'],57:['🌧️','Bruine verglaçante'],
+61:['🌧️','Pluie faible'],63:['🌧️','Pluie'],65:['🌧️','Pluie forte'],66:['🌧️','Pluie verglaçante'],67:['🌧️','Pluie verglaçante'],
+71:['🌨️','Neige faible'],73:['🌨️','Neige'],75:['❄️','Neige forte'],77:['🌨️','Grains de neige'],80:['🌦️','Averses'],81:['🌦️','Averses'],82:['⛈️','Fortes averses'],
+85:['🌨️','Averses de neige'],86:['🌨️','Averses de neige'],95:['⛈️','Orage'],96:['⛈️','Orage et grêle'],99:['⛈️','Orage et grêle']};
+function wx(c){return WX[c]||['🌡️','—']}
+var dayFmt=new Intl.DateTimeFormat('fr-FR',{weekday:'short'});
+
+function getJSON(u){return fetch(u).then(function(r){if(!r.ok)throw new Error('HTTP '+r.status);return r.json()})}
+
+function geocode(city){
+  return getJSON('https://geocoding-api.open-meteo.com/v1/search?count=1&language=fr&name='+encodeURIComponent(city)).then(function(g){
+    if(!g.results||!g.results.length)throw new Error('Ville introuvable');
+    var r=g.results[0];cfg.lat=r.latitude;cfg.lon=r.longitude;cfg.place=r.name+(r.admin2?' · '+r.admin2:'');save('cfg',cfg);
+  });
+}
+
+function weather(){
+  if(cfg.lat==null){$('wxDesc').textContent='Choisis ta ville dans les réglages ⚙︎';return}
+  getJSON('https://api.open-meteo.com/v1/forecast?latitude='+cfg.lat+'&longitude='+cfg.lon+
+    '&current=temperature_2m,weather_code,apparent_temperature&daily=weather_code,temperature_2m_max,temperature_2m_min,precipitation_probability_max&timezone=auto&forecast_days=4')
+  .then(function(w){
+    var c=w.current,x=wx(c.weather_code);
+    $('wxIco').textContent=x[0];$('wxTemp').textContent=Math.round(c.temperature_2m)+'°';
+    $('wxDesc').textContent=x[1]+' · ressenti '+Math.round(c.apparent_temperature)+'°';
+    $('wxPlace').textContent=cfg.place;
+    var d=w.daily,box=$('wxDays');box.textContent='';
+    for(var i=1;i<4;i++){
+      var it=el('div','wx-day');
+      it.appendChild(el('b',null,dayFmt.format(new Date(d.time[i]+'T12:00:00'))));
+      it.appendChild(el('span',null,wx(d.weather_code[i])[0]));
+      var mm=el('span','mm',Math.round(d.temperature_2m_max[i])+'° ');mm.appendChild(el('i',null,Math.round(d.temperature_2m_min[i])+'°'));it.appendChild(mm);
+      it.appendChild(el('span','status',(d.precipitation_probability_max[i]||0)+' % pluie'));
+      box.appendChild(it);
+    }
+  }).catch(function(e){$('wxDesc').textContent='Météo indisponible ('+e.message+')'});
+}
+
+/* ---------- Carburants (data.economie.gouv.fr) ---------- */
+var FUELS=[['gazole','Gazole'],['e10','SP95-E10'],['sp98','SP98'],['sp95','SP95'],['e85','E85'],['gplc','GPL']];
+function fuelTabs(){
+  var t=$('fuelTabs');t.textContent='';
+  FUELS.forEach(function(f){var b=el('button','chip',f[1]);b.type='button';b.setAttribute('aria-pressed',cfg.fuel===f[0]);
+    b.onclick=function(){cfg.fuel=f[0];save('cfg',cfg);fuelTabs();fuel()};t.appendChild(b)});
+}
+function fuel(){
+  var ul=$('stations');
+  if(cfg.lat==null){ul.textContent='';ul.appendChild(el('li','empty','Choisis ta ville dans les réglages ⚙︎'));return}
+  var f=cfg.fuel,w="within_distance(geom, geom'POINT("+cfg.lon+' '+cfg.lat+")', 5km) and "+f+'_prix is not null';
+  getJSON('https://data.economie.gouv.fr/api/explore/v2.1/catalog/datasets/prix-des-carburants-en-france-flux-instantane-v2/records?limit=6&select=adresse,ville,'+f+'_prix,'+f+'_maj&order_by='+f+'_prix&where='+encodeURIComponent(w))
+  .then(function(j){
+    ul.textContent='';
+    if(!j.results.length){ul.appendChild(el('li','empty','Aucune station à moins de 5 km pour ce carburant.'));return}
+    j.results.forEach(function(s){
+      var li=el('li');li.appendChild(el('span','st-name',s.adresse||'Station'));
+      var p=el('span','st-price',s[f+'_prix'].toFixed(3));p.appendChild(el('small',null,' €/L'));li.appendChild(p);
+      var maj=s[f+'_maj']?new Date(s[f+'_maj']):null;
+      li.appendChild(el('span','st-sub',(s.ville||'')+(maj?' · maj '+maj.toLocaleDateString('fr-FR',{day:'numeric',month:'short'}):'')));
+      ul.appendChild(li);
+    });
+    $('fuelStatus').textContent='à '+new Date().toLocaleTimeString('fr-FR',{hour:'2-digit',minute:'2-digit'});
+  }).catch(function(e){ul.textContent='';ul.appendChild(el('li','empty err','Prix indisponibles ('+e.message+')'))});
+}
+
+/* ---------- Tâches (gardées sur l'iPad) ---------- */
+var todos=load('todos',[]);
+function renderTodos(){
+  var ul=$('todos');ul.textContent='';
+  if(!todos.length)ul.appendChild(el('li','empty','Rien à faire. Ajoute une tâche ou un article de courses.'));
+  todos.forEach(function(t,i){
+    var li=el('li',t.done?'done':'');
+    var b=el('button','box',t.done?'✓':'');b.type='button';b.setAttribute('aria-label',t.done?'Décocher':'Cocher');
+    b.onclick=function(){t.done=!t.done;save('todos',todos);renderTodos()};
+    var x=el('button','del','×');x.type='button';x.setAttribute('aria-label','Supprimer');
+    x.onclick=function(){todos.splice(i,1);save('todos',todos);renderTodos()};
+    li.appendChild(b);li.appendChild(el('span',null,t.text));li.appendChild(x);ul.appendChild(li);
+  });
+  var left=todos.filter(function(t){return !t.done}).length;
+  $('todoCount').textContent=todos.length?left+' restant'+(left>1?'s':''):'';
+}
+$('addForm').onsubmit=function(e){e.preventDefault();var v=$('newTodo').value.trim();if(!v)return;todos.unshift({text:v,done:false});save('todos',todos);$('newTodo').value='';$('newTodo').blur();renderTodos()};
+$('clearDone').onclick=function(){todos=todos.filter(function(t){return !t.done});save('todos',todos);renderTodos()};
+
+/* ---------- Agenda (intégration Google Agenda) ---------- */
+function calendar(){
+  var b=$('calBody');b.textContent='';
+  if(!cfg.cal){var p=el('p','hint');p.innerHTML='Ajoute ton <b>adresse Google Agenda</b> dans les réglages ⚙︎ pour afficher tes rendez-vous ici.';b.appendChild(p);return}
+  var f=document.createElement('iframe');
+  f.src='https://calendar.google.com/calendar/embed?mode=AGENDA&showTitle=0&showPrint=0&showTabs=0&showCalendars=0&showTz=0&hl=fr&ctz='+encodeURIComponent(Intl.DateTimeFormat().resolvedOptions().timeZone||'Europe/Paris')+'&src='+encodeURIComponent(cfg.cal);
+  f.title='Agenda';b.appendChild(f);
+}
+
+/* ---------- Réglages ---------- */
+var sFuel=$('sFuel');FUELS.forEach(function(f){var o=el('option',null,f[1]);o.value=f[0];sFuel.appendChild(o)});
+$('gear').onclick=function(){$('sCity').value=cfg.city;sFuel.value=cfg.fuel;$('sCal').value=cfg.cal;
+  if($('settings').showModal)$('settings').showModal();else $('settings').setAttribute('open','')};
+$('sCancel').onclick=function(){if($('settings').close)$('settings').close();else $('settings').removeAttribute('open')};
+$('setForm').addEventListener('submit',function(e){
+  var city=$('sCity').value.trim(),changed=city!==cfg.city;
+  cfg.city=city;cfg.fuel=sFuel.value;cfg.cal=$('sCal').value.trim();save('cfg',cfg);
+  if(!$('settings').showModal){e.preventDefault();$('settings').removeAttribute('open')}
+  fuelTabs();calendar();
+  if(changed&&city){geocode(city).then(refresh).catch(function(err){$('wxDesc').textContent=err.message})}else refresh();
+});
+
+function refresh(){weather();fuel()}
+
+/* ---------- Écran toujours allumé + rafraîchissements ---------- */
+var lock=null;
+function keepAwake(){if(navigator.wakeLock&&document.visibilityState==='visible'){navigator.wakeLock.request('screen').then(function(l){lock=l}).catch(function(){})}}
+document.addEventListener('visibilitychange',function(){if(document.visibilityState==='visible'){keepAwake();refresh()}});
+document.addEventListener('click',function(){if(!lock)keepAwake()},{once:true});
+keepAwake();
+
+fuelTabs();renderTodos();calendar();
+if(cfg.city&&cfg.lat==null)geocode(cfg.city).then(refresh);else refresh();
+setInterval(weather,15*60*1000);   // météo : toutes les 15 min
+setInterval(fuel,60*60*1000);      // carburant : toutes les heures
+setInterval(function(){if(new Date().getHours()===4&&new Date().getMinutes()===0)location.reload()},60*1000); // recharge chaque nuit
+})();
+</script>
+</body>
+</html>
